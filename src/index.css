@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { min-height: 100%; }
+body { @apply bg-fundo text-grafite font-sans antialiased; -webkit-tap-highlight-color: transparent; }
+h1, h2, h3 { @apply font-titulo; }
+@keyframes subir { from { transform: translateY(24px); opacity: .6 } to { transform: none; opacity: 1 } }
+.pb-nav { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
