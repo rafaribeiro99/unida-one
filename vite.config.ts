@@ -13,8 +13,8 @@ export default defineConfig({
         short_name: 'Unida One',
         description: 'A plataforma da Igreja Unida da Graça para quem serve.',
         lang: 'pt-BR',
-        theme_color: '#0B2E26',
-        background_color: '#0B2E26',
+        theme_color: '#07110E',
+        background_color: '#07110E',
         display: 'standalone',
         start_url: '/',
         icons: [

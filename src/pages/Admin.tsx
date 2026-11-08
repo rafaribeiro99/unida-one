@@ -40,13 +40,13 @@ function Estrutura() {
     const rs = (resp ?? []).filter((r) => r.org_id === o.id)
     return (
       <div key={o.id}>
-        <button onClick={() => setSel(o)} className="w-full text-left flex items-center gap-2 py-2.5 pr-3 hover:bg-black/[0.02]" style={{ paddingLeft: 12 + nivel * 18 }}>
-          <span className={clsx('flex-1 min-w-0', nivel <= 1 ? 'font-semibold text-verde' : 'font-medium')}>
+        <button onClick={() => setSel(o)} className="w-full text-left flex items-center gap-2 py-2.5 pr-3 hover:bg-white/[0.03]" style={{ paddingLeft: 12 + nivel * 18 }}>
+          <span className={clsx('flex-1 min-w-0', nivel <= 1 ? 'font-semibold text-white' : 'font-medium')}>
             {o.nome}
-            {rs.length > 0 && <span className="block text-xs font-normal text-grafite/50 truncate">{rs.map((r) => `${r.pessoas.nome.split(' ')[0]} (${PAPEL_LABEL[r.papel]})`).join(', ')}</span>}
+            {rs.length > 0 && <span className="block text-xs font-normal text-white/50 truncate">{rs.map((r) => `${r.pessoas.nome.split(' ')[0]} (${PAPEL_LABEL[r.papel]})`).join(', ')}</span>}
           </span>
           <Selo>{ORG_TIPO_LABEL[o.tipo]}</Selo>
-          <ChevronRight className="h-4 w-4 text-grafite/30" />
+          <ChevronRight className="h-4 w-4 text-white/30" />
         </button>
         {filhos(o.id).map((f) => linha(f, nivel + 1))}
       </div>
@@ -54,8 +54,8 @@ function Estrutura() {
   }
   return (
     <>
-      <p className="text-sm text-grafite/60 mb-3">Toque num item para renomear, criar itens abaixo ou definir líderes e supervisores.</p>
-      <Card className="divide-y divide-black/5 overflow-hidden">{raiz.map((o) => linha(o, 0))}</Card>
+      <p className="text-sm text-white/60 mb-3">Toque num item para renomear, criar itens abaixo ou definir líderes e supervisores.</p>
+      <Card className="divide-y divide-white/[0.06] overflow-hidden">{raiz.map((o) => linha(o, 0))}</Card>
       <PainelOrg org={sel} onFechar={() => setSel(null)} onMudou={() => { recarregar(); reload() }} />
     </>
   )
@@ -100,8 +100,8 @@ function PainelOrg({ org, onFechar, onMudou }: { org: Org | null; onFechar: () =
             <Link to={`/ministerios/${org.id}`} className="block"><Botao variante="fantasma" className="w-full">Abrir pessoas, funções e escalas</Botao></Link>
           )}
           {FILHOS[org.tipo].length > 0 && (
-            <div className="rounded-xl bg-white p-3 border border-black/5 space-y-3">
-              <p className="text-sm font-semibold text-verde">Criar dentro de {org.nome}</p>
+            <div className="rounded-xl bg-white/[0.04] p-3 border border-white/[0.08] space-y-3">
+              <p className="text-sm font-semibold text-white">Criar dentro de {org.nome}</p>
               <div className="grid grid-cols-[1fr_auto] gap-2">
                 <Entrada value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} placeholder="Nome" />
                 <Selecao value={novo.tipo} onChange={(e) => setNovo({ ...novo, tipo: e.target.value as OrgTipo })} className="w-36">
@@ -128,18 +128,18 @@ function Pessoas() {
   return (
     <>
       <div className="relative mb-3">
-        <Search className="h-4 w-4 absolute left-3 top-3.5 text-grafite/40" />
+        <Search className="h-4 w-4 absolute left-3 top-3.5 text-white/40" />
         <Entrada className="pl-9" placeholder="Buscar pessoa" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
-      <p className="text-xs text-grafite/50 mb-3">{data?.length ?? 0} pessoas · {semAcesso} ainda sem acesso</p>
+      <p className="text-xs text-white/50 mb-3">{data?.length ?? 0} pessoas · {semAcesso} ainda sem acesso</p>
       {loading ? <Carregando /> : (
-        <Card className="divide-y divide-black/5">
+        <Card className="divide-y divide-white/[0.06]">
           {lista.map((p) => (
             <button key={p.id} onClick={() => setSel(p)} className={clsx('w-full text-left p-3.5 flex items-center gap-3', !p.ativo && 'opacity-40')}>
               <Iniciais nome={p.nome} />
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{p.nome}</p>
-                <p className="text-xs text-grafite/50">{fmtTel(p.telefone)}</p>
+                <p className="text-xs text-white/50">{fmtTel(p.telefone)}</p>
               </div>
               {p.is_admin && <Selo cor="claro">Admin</Selo>}
               {!p.user_id && <Selo cor="amarelo">Sem acesso</Selo>}
@@ -183,13 +183,13 @@ function PainelPessoa({ pessoa, onFechar, onMudou }: { pessoa: Pessoa | null; on
         <Campo rotulo="Nome"><Entrada value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} /></Campo>
         <Campo rotulo="WhatsApp"><Entrada value={f.telefone} onChange={(e) => setF({ ...f, telefone: e.target.value })} /></Campo>
         <Campo rotulo="E-mail"><Entrada value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Campo>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-verde h-4 w-4" checked={f.is_admin} onChange={(e) => setF({ ...f, is_admin: e.target.checked })} />Administrador do sistema</label>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-verde h-4 w-4" checked={f.ativo} onChange={(e) => setF({ ...f, ativo: e.target.checked })} />Ativo</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[#6EE7B7] h-4 w-4" checked={f.is_admin} onChange={(e) => setF({ ...f, is_admin: e.target.checked })} />Administrador do sistema</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[#6EE7B7] h-4 w-4" checked={f.ativo} onChange={(e) => setF({ ...f, ativo: e.target.checked })} />Ativo</label>
         <div>
-          <p className="text-[13px] font-medium text-grafite/80 mb-1.5">Vínculos</p>
+          <p className="text-[13px] font-medium text-white/80 mb-1.5">Vínculos</p>
           <div className="flex flex-wrap gap-1.5">
             {vinc.length ? vinc.map((v) => <Selo key={v.id} cor={v.papel === 'membro' ? 'cinza' : 'claro'}>{orgPorId.get(v.org_id)?.nome}{v.papel !== 'membro' ? ` · ${PAPEL_LABEL[v.papel]}` : ''}</Selo>)
-              : <span className="text-sm text-grafite/50">Nenhum</span>}
+              : <span className="text-sm text-white/50">Nenhum</span>}
           </div>
         </div>
         {!pessoa.user_id && (token ? <LinkConvite nome={pessoa.nome} telefone={pessoa.telefone} token={token} />
@@ -217,18 +217,18 @@ function Avisos() {
     <>
       <div className="grid grid-cols-3 gap-2 mb-4">
         {(['pendente', 'enviada', 'erro'] as const).map((k) => (
-          <Card key={k} className="p-3 text-center"><p className="font-titulo text-2xl font-bold text-verde">{data.resumo?.[k] ?? 0}</p><p className="text-xs text-grafite/50 capitalize">{k === 'enviada' ? 'enviadas' : k === 'erro' ? 'com erro' : 'na fila'}</p></Card>
+          <Card key={k} className="p-3 text-center"><p className="font-titulo text-2xl font-bold text-white">{data.resumo?.[k] ?? 0}</p><p className="text-xs text-white/50 capitalize">{k === 'enviada' ? 'enviadas' : k === 'erro' ? 'com erro' : 'na fila'}</p></Card>
         ))}
       </div>
       <Botao variante="secundario" className="w-full mb-4" onClick={processar} carregando={proc}><RefreshCw className="h-4 w-4" />Enviar fila agora</Botao>
-      <Card className="divide-y divide-black/5">
+      <Card className="divide-y divide-white/[0.06]">
         {data.ultimas?.map((n, i) => (
           <div key={i} className="p-3">
             <div className="flex items-center gap-2">
               <p className="flex-1 text-sm font-medium truncate">{n.nome} · {n.titulo}</p>
               <Selo cor={n.whatsapp_status === 'enviada' ? 'verde' : n.whatsapp_status === 'erro' ? 'vermelho' : 'amarelo'}>{n.whatsapp_status}</Selo>
             </div>
-            <p className="text-[11px] text-grafite/40">{fmtDiaHora(n.criado_em)}{n.erro ? ` · ${n.erro}` : ''}</p>
+            <p className="text-[11px] text-white/40">{fmtDiaHora(n.criado_em)}{n.erro ? ` · ${n.erro}` : ''}</p>
           </div>
         ))}
       </Card>

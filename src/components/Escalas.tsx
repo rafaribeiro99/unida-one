@@ -39,10 +39,10 @@ export function CartaoAlocacao({ a, trocaPendente, onMudou }: { a: MinhaAloc; tr
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-verde-2">{a.escalas.org.nome}{a.funcoes ? ` · ${a.funcoes.nome}` : ''}</p>
-          <p className="font-titulo font-semibold text-verde mt-1 leading-snug">{ev.titulo}</p>
-          <p className="text-sm text-grafite/70 mt-1">{fmtDiaHora(ev.inicio)} – {fmtHora(ev.fim)}</p>
-          {ev.local && <p className="text-xs text-grafite/50 mt-0.5 flex items-center gap-1"><MapPin className="h-3 w-3" />{ev.local}</p>}
+          <p className="text-xs font-semibold uppercase tracking-wide text-verde-glow">{a.escalas.org.nome}{a.funcoes ? ` · ${a.funcoes.nome}` : ''}</p>
+          <p className="font-titulo font-semibold text-white mt-1 leading-snug">{ev.titulo}</p>
+          <p className="text-sm text-white/70 mt-1">{fmtDiaHora(ev.inicio)} – {fmtHora(ev.fim)}</p>
+          {ev.local && <p className="text-xs text-white/50 mt-0.5 flex items-center gap-1"><MapPin className="h-3 w-3" />{ev.local}</p>}
         </div>
         <div className="flex flex-col items-end gap-1">
           <StatusAloc status={a.status} />
@@ -106,7 +106,7 @@ function PainelTroca({ aberto, onFechar, aloc, onFeito }: { aberto: boolean; onF
   return (
     <Painel aberto={aberto} onFechar={onFechar} titulo="Pedir troca" rodape={<Botao className="w-full" onClick={enviar} carregando={enviando}>Enviar pedido ao líder</Botao>}>
       <div className="space-y-4">
-        <p className="text-sm text-grafite/70">{aloc.escalas.eventos.titulo} · {fmtDiaHora(aloc.escalas.eventos.inicio)}</p>
+        <p className="text-sm text-white/70">{aloc.escalas.eventos.titulo} · {fmtDiaHora(aloc.escalas.eventos.inicio)}</p>
         <Campo rotulo="Motivo"><Entrada value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: vou viajar" /></Campo>
         <Campo rotulo="Quem pode te substituir? (opcional)" dica="Combine antes com a pessoa. O líder aprova a troca.">
           <Selecao value={sub} onChange={(e) => setSub(e.target.value)}>

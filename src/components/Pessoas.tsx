@@ -8,14 +8,14 @@ import { linkWhats, textoConvite } from '../lib/whats'
 import { PAPEL_LABEL, type Funcao, type Papel } from '../lib/types'
 
 export function SeletorFuncoes({ funcoes, valor, onChange }: { funcoes: Funcao[]; valor: string[]; onChange: (v: string[]) => void }) {
-  if (!funcoes.length) return <p className="text-xs text-grafite/50">Este ministério ainda não tem funções cadastradas.</p>
+  if (!funcoes.length) return <p className="text-xs text-white/50">Este ministério ainda não tem funções cadastradas.</p>
   return (
     <div className="flex flex-wrap gap-2">
       {funcoes.map((f) => {
         const on = valor.includes(f.id)
         return (
           <button key={f.id} type="button" onClick={() => onChange(on ? valor.filter((x) => x !== f.id) : [...valor, f.id])}
-            className={clsx('rounded-full px-3 h-8 text-sm border transition', on ? 'bg-verde text-white border-verde' : 'bg-white border-black/10 text-grafite/70')}>
+            className={clsx('rounded-full px-3 h-8 text-sm border transition', on ? 'bg-verde-claro text-escuro border-verde-claro' : 'bg-white/[0.04] border-white/[0.08] text-white/70')}>
             {f.nome}
           </button>
         )
@@ -29,9 +29,9 @@ export function LinkConvite({ nome, telefone, token }: { nome: string; telefone:
   const avisar = useAviso()
   const texto = textoConvite(nome, token)
   return (
-    <div className="rounded-xl bg-verde-claro/30 p-3 space-y-2">
-      <p className="text-sm text-verde font-medium">Link de acesso de {nome.split(' ')[0]}</p>
-      <p className="text-xs break-all text-grafite/70">{location.origin}/convite/{token}</p>
+    <div className="rounded-xl bg-verde-glow/10 border border-verde-glow/20 p-3 space-y-2">
+      <p className="text-sm text-verde-glow font-medium">Link de acesso de {nome.split(' ')[0]}</p>
+      <p className="text-xs break-all text-white/70">{location.origin}/convite/{token}</p>
       <div className="flex gap-2">
         <Botao variante="secundario" className="h-9 flex-1" onClick={() => { navigator.clipboard.writeText(texto); avisar('Mensagem copiada.') }}><Copy className="h-4 w-4" />Copiar</Botao>
         {telefone && <a className="flex-1" href={linkWhats(telefone, texto)} target="_blank" rel="noreferrer"><Botao className="h-9 w-full"><MessageCircle className="h-4 w-4" />WhatsApp</Botao></a>}
@@ -85,15 +85,15 @@ export function PainelConvidar({ aberto, onFechar, orgId, funcoes, onFeito }: { 
         <Botao className="w-full" onClick={enviar} carregando={enviando}>{sup ? 'Adicionar' : 'Enviar para aprovação'}</Botao>}>
       {resultado ? (
         <div className="space-y-3">
-          <p className="text-sm text-grafite/70">Pessoa adicionada. Ela recebe o convite pelo WhatsApp automaticamente; se preferir, envie você mesmo:</p>
+          <p className="text-sm text-white/70">Pessoa adicionada. Ela recebe o convite pelo WhatsApp automaticamente; se preferir, envie você mesmo:</p>
           <LinkConvite {...resultado} />
         </div>
       ) : (
         <div className="space-y-4">
-          {!sup && <p className="text-xs rounded-xl bg-amber-50 text-amber-800 px-3 py-2">A inclusão será aprovada pelo supervisor do setor.</p>}
-          <div className="flex gap-1 p-1 rounded-xl bg-black/[0.04]">
+          {!sup && <p className="text-xs rounded-xl bg-amber-400/10 text-amber-200 px-3 py-2">A inclusão será aprovada pelo supervisor do setor.</p>}
+          <div className="flex gap-1 p-1 rounded-xl bg-white/[0.05]">
             {(['nova', 'existente'] as const).map((m) => (
-              <button key={m} onClick={() => setModo(m)} className={clsx('flex-1 h-9 rounded-lg text-sm font-medium', modo === m ? 'bg-white text-verde shadow-sm' : 'text-grafite/60')}>
+              <button key={m} onClick={() => setModo(m)} className={clsx('flex-1 h-9 rounded-lg text-sm font-medium', modo === m ? 'bg-white/[0.04] text-white shadow-sm' : 'text-white/60')}>
                 {m === 'nova' ? 'Pessoa nova' : 'Já cadastrada'}
               </button>
             ))}
@@ -110,7 +110,7 @@ export function PainelConvidar({ aberto, onFechar, orgId, funcoes, onFeito }: { 
               <div className="space-y-1 mt-2">
                 {filtradas.map((p) => (
                   <button key={p.id} onClick={() => { setF({ ...f, pessoa_id: p.id, nome: p.nome }); setBusca(p.nome) }}
-                    className={clsx('w-full text-left rounded-lg px-3 py-2 text-sm', f.pessoa_id === p.id ? 'bg-verde text-white' : 'bg-white hover:bg-black/5')}>{p.nome}</button>
+                    className={clsx('w-full text-left rounded-lg px-3 py-2 text-sm', f.pessoa_id === p.id ? 'bg-verde-claro text-escuro' : 'bg-white/[0.04] hover:bg-white/5')}>{p.nome}</button>
                 ))}
               </div>
             </Campo>

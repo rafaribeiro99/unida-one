@@ -55,7 +55,7 @@ export function FormEvento({ aberto, onFechar, evento, orgPadrao, dataPadrao, on
     <Painel aberto={aberto} onFechar={onFechar} titulo={evento ? 'Editar evento' : 'Novo evento'}
       rodape={<Botao className="w-full" onClick={salvar} carregando={enviando}>{direto ? 'Salvar' : 'Enviar para aprovação'}</Botao>}>
       <div className="space-y-4">
-        {!direto && <p className="text-xs rounded-xl bg-amber-50 text-amber-800 px-3 py-2">Este pedido vai para aprovação da secretaria ou do supervisor.</p>}
+        {!direto && <p className="text-xs rounded-xl bg-amber-400/10 text-amber-200 px-3 py-2">Este pedido vai para aprovação da secretaria ou do supervisor.</p>}
         <Campo rotulo="Título"><Entrada value={f.titulo} onChange={set('titulo')} placeholder="Ex.: Ensaio geral" /></Campo>
         <div className="grid grid-cols-2 gap-3">
           <Campo rotulo="Tipo">
@@ -70,7 +70,7 @@ export function FormEvento({ aberto, onFechar, evento, orgPadrao, dataPadrao, on
             </Selecao>
           </Campo>
         </div>
-        {org && <p className="text-xs text-grafite/50 -mt-2">{caminho(org)}</p>}
+        {org && <p className="text-xs text-white/50 -mt-2">{caminho(org)}</p>}
         <Campo rotulo="Data"><Entrada type="date" value={f.data} onChange={set('data')} /></Campo>
         <div className="grid grid-cols-2 gap-3">
           <Campo rotulo="Início"><Entrada type="time" value={f.hi} onChange={set('hi')} /></Campo>
@@ -123,14 +123,14 @@ export function DetalheEvento({ evento, onFechar, onMudou }: { evento: Evento | 
               {evento.org_id && <Selo>{orgPorId.get(evento.org_id)?.nome}</Selo>}
               {evento.cancelado && <Selo cor="vermelho">Cancelado</Selo>}
             </div>
-            <p className="text-sm text-grafite/80">{fmtDiaHora(evento.inicio)} – {fmtHora(evento.fim)}</p>
-            {evento.local && <p className="text-sm text-grafite/60 flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{evento.local}</p>}
-            {evento.descricao && <p className="text-sm text-grafite/70 whitespace-pre-line">{evento.descricao}</p>}
+            <p className="text-sm text-white/80">{fmtDiaHora(evento.inicio)} – {fmtHora(evento.fim)}</p>
+            {evento.local && <p className="text-sm text-white/60 flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{evento.local}</p>}
+            {evento.descricao && <p className="text-sm text-white/70 whitespace-pre-line">{evento.descricao}</p>}
           </div>
 
           {!evento.cancelado && areasQueGerencio.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-grafite/50 uppercase tracking-wide">Montar escala</p>
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wide">Montar escala</p>
               <div className="flex flex-wrap gap-2">
                 {areasQueGerencio.map((o) => (
                   <Botao key={o.id} variante="secundario" className="h-9 text-xs" onClick={() => nav(`/ministerios/${o.id}/escala/${evento.id}`)}>
@@ -142,18 +142,18 @@ export function DetalheEvento({ evento, onFechar, onMudou }: { evento: Evento | 
           )}
 
           <div className="space-y-3">
-            <p className="text-xs font-semibold text-grafite/50 uppercase tracking-wide">Quem serve</p>
-            {escalas === null ? <p className="text-sm text-grafite/50">Carregando…</p> : escalas.length === 0 ? <p className="text-sm text-grafite/50">Nenhuma escala publicada ainda.</p> : escalas.map((s) => (
-              <div key={s.id} className="rounded-xl bg-white p-3 border border-black/5">
+            <p className="text-xs font-semibold text-white/50 uppercase tracking-wide">Quem serve</p>
+            {escalas === null ? <p className="text-sm text-white/50">Carregando…</p> : escalas.length === 0 ? <p className="text-sm text-white/50">Nenhuma escala publicada ainda.</p> : escalas.map((s) => (
+              <div key={s.id} className="rounded-xl bg-white/[0.04] p-3 border border-white/[0.08]">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="font-semibold text-sm text-verde">{s.org.nome}</p>
+                  <p className="font-semibold text-sm text-white">{s.org.nome}</p>
                   {!s.publicada && <Selo cor="amarelo">Rascunho</Selo>}
                 </div>
                 <div className="space-y-1.5">
                   {s.alocacoes.map((a) => (
                     <div key={a.id} className="flex items-center gap-2 text-sm">
                       <Iniciais nome={a.pessoas.nome} className="h-7 w-7 text-[10px]" />
-                      <span className="flex-1 truncate">{a.pessoas.nome}{a.funcoes ? <span className="text-grafite/50"> · {a.funcoes.nome}</span> : null}</span>
+                      <span className="flex-1 truncate">{a.pessoas.nome}{a.funcoes ? <span className="text-white/50"> · {a.funcoes.nome}</span> : null}</span>
                       <StatusAloc status={a.status} />
                     </div>
                   ))}
@@ -169,8 +169,8 @@ export function DetalheEvento({ evento, onFechar, onMudou }: { evento: Evento | 
             </div>
           )}
           {cancelando && (
-            <div className="rounded-xl bg-red-50 p-3 space-y-2">
-              <p className="text-sm text-red-800">{direto ? 'Cancelar este evento? Quem está escalado será avisado.' : 'Pedir o cancelamento deste evento?'}</p>
+            <div className="rounded-xl bg-red-500/10 p-3 space-y-2">
+              <p className="text-sm text-red-300">{direto ? 'Cancelar este evento? Quem está escalado será avisado.' : 'Pedir o cancelamento deste evento?'}</p>
               <div className="flex gap-2 flex-wrap">
                 <Botao variante="perigo" className="h-9" onClick={() => cancelar(false)}>Só este</Botao>
                 {evento.serie_id && <Botao variante="perigo" className="h-9" onClick={() => cancelar(true)}>Este e os próximos</Botao>}

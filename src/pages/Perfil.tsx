@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bell, CalendarOff, LogOut, Plus, Settings, Trash2 } from 'lucide-react'
 import { addDays, format } from 'date-fns'
@@ -15,6 +15,7 @@ export default function Perfil() {
   const avisar = useAviso()
   const [editando, setEditando] = useState(false)
   const [nova, setNova] = useState(false)
+  useEffect(() => { if (location.hash === '#folgas') setTimeout(() => document.getElementById('folgas')?.scrollIntoView({ behavior: 'smooth' }), 300) }, [])
   const { data, reload } = useData(async () => {
     const [ind, notif] = await Promise.all([
       q(supabase.from('indisponibilidades').select('*').eq('pessoa_id', eu!.id).gte('fim', new Date().toISOString()).order('inicio')),
@@ -34,49 +35,49 @@ export default function Perfil() {
       <Card className="p-5 flex items-center gap-4">
         <Iniciais nome={eu!.nome} className="h-14 w-14 text-lg" />
         <div className="flex-1 min-w-0">
-          <p className="font-titulo font-semibold text-lg text-verde truncate">{eu!.nome}</p>
-          <p className="text-sm text-grafite/60">{fmtTel(eu!.telefone)}</p>
-          <p className="text-sm text-grafite/60 truncate">{eu!.email}</p>
+          <p className="font-titulo font-semibold text-lg text-white truncate">{eu!.nome}</p>
+          <p className="text-sm text-white/60">{fmtTel(eu!.telefone)}</p>
+          <p className="text-sm text-white/60 truncate">{eu!.email}</p>
         </div>
         <Botao variante="fantasma" className="h-9" onClick={() => setEditando(true)}>Editar</Botao>
       </Card>
 
       <section>
-        <h2 className="text-sm font-semibold text-grafite/60 mb-2">Onde sirvo</h2>
+        <h2 className="text-sm font-semibold text-white/60 mb-2">Onde sirvo</h2>
         <Card className="p-4 flex flex-wrap gap-2">
-          {vinculos.length === 0 ? <p className="text-sm text-grafite/50">Nenhum vínculo.</p> : vinculos.map((v) => (
+          {vinculos.length === 0 ? <p className="text-sm text-white/50">Nenhum vínculo.</p> : vinculos.map((v) => (
             <Selo key={v.id} cor={v.papel === 'membro' ? 'cinza' : 'claro'}>{orgPorId.get(v.org_id)?.nome ?? '—'}{v.papel !== 'membro' ? ` · ${PAPEL_LABEL[v.papel]}` : ''}</Selo>
           ))}
         </Card>
       </section>
 
-      <section>
+      <section id="folgas" className="scroll-mt-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-grafite/60">Minhas indisponibilidades</h2>
+          <h2 className="text-sm font-semibold text-white/60">Minhas folgas e indisponibilidades</h2>
           <Botao variante="fantasma" className="h-8 text-xs" onClick={() => setNova(true)}><Plus className="h-4 w-4" />Adicionar</Botao>
         </div>
-        <Card className="divide-y divide-black/5">
-          {!data?.ind.length ? <p className="p-4 text-sm text-grafite/50 flex items-center gap-2"><CalendarOff className="h-4 w-4" />Avise aqui quando não puder servir (viagens, compromissos). Seus líderes verão ao montar a escala.</p>
+        <Card className="divide-y divide-white/[0.06]">
+          {!data?.ind.length ? <p className="p-4 text-sm text-white/50 flex items-center gap-2"><CalendarOff className="h-4 w-4" />Avise aqui quando não puder servir (viagens, compromissos). Seus líderes verão ao montar a escala.</p>
             : data.ind.map((i) => (
               <div key={i.id} className="p-3.5 flex items-center gap-3">
                 <div className="flex-1">
                   <p className="text-sm font-medium">{fmtDataCurta(i.inicio)}{fmtDataCurta(i.inicio) !== fmtDataCurta(i.fim) ? ` a ${fmtDataCurta(i.fim)}` : ''}</p>
-                  {i.motivo && <p className="text-xs text-grafite/50">{i.motivo}</p>}
+                  {i.motivo && <p className="text-xs text-white/50">{i.motivo}</p>}
                 </div>
-                <button onClick={() => removerInd(i)} className="p-2 text-grafite/35 hover:text-red-600" aria-label="Remover"><Trash2 className="h-4 w-4" /></button>
+                <button onClick={() => removerInd(i)} className="p-2 text-white/35 hover:text-red-300" aria-label="Remover"><Trash2 className="h-4 w-4" /></button>
               </div>
             ))}
         </Card>
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-grafite/60 mb-2">Avisos recentes</h2>
-        <Card className="divide-y divide-black/5">
-          {!data?.notif.length ? <p className="p-4 text-sm text-grafite/50 flex items-center gap-2"><Bell className="h-4 w-4" />Nenhum aviso ainda.</p> : data.notif.map((n) => (
+        <h2 className="text-sm font-semibold text-white/60 mb-2">Avisos recentes</h2>
+        <Card className="divide-y divide-white/[0.06]">
+          {!data?.notif.length ? <p className="p-4 text-sm text-white/50 flex items-center gap-2"><Bell className="h-4 w-4" />Nenhum aviso ainda.</p> : data.notif.map((n) => (
             <div key={n.id} className="p-3.5">
-              <p className="text-sm font-medium text-verde">{n.titulo}</p>
-              <p className="text-xs text-grafite/60 mt-0.5 whitespace-pre-line line-clamp-3">{n.mensagem.replace(/\*/g, '')}</p>
-              <p className="text-[11px] text-grafite/40 mt-1">{fmtDiaHora(n.criado_em)}</p>
+              <p className="text-sm font-medium text-white">{n.titulo}</p>
+              <p className="text-xs text-white/60 mt-0.5 whitespace-pre-line line-clamp-3">{n.mensagem.replace(/\*/g, '')}</p>
+              <p className="text-[11px] text-white/40 mt-1">{fmtDiaHora(n.criado_em)}</p>
             </div>
           ))}
         </Card>

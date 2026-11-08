@@ -38,7 +38,7 @@ export default function Ministerio() {
   return (
     <div>
       <Cabecalho titulo={org.nome} sub={caminho(org.id)}
-        voltar={<Link to="/ministerios" className="inline-flex items-center gap-1 text-sm text-grafite/50 mb-2"><ArrowLeft className="h-4 w-4" />Ministérios</Link>} />
+        voltar={<Link to="/ministerios" className="inline-flex items-center gap-1 text-sm text-white/50 mb-2"><ArrowLeft className="h-4 w-4" />Ministérios</Link>} />
       <Abas valor={aba} onChange={setAba} opcoes={[{ v: 'escalas', rotulo: 'Escalas' }, { v: 'pessoas', rotulo: 'Pessoas', n: data?.membros.length }, { v: 'funcoes', rotulo: 'Funções' }]} />
       {loading || !data ? <Carregando /> : aba === 'escalas' ? <AbaEscalas orgId={id} gere={gere} {...data} onMudou={reload} />
         : aba === 'pessoas' ? <AbaPessoas orgId={id} gere={gere} membros={data.membros} funcoes={data.funcoes} onMudou={reload} />
@@ -56,7 +56,7 @@ function AbaEscalas({ orgId, gere, eventos, escalaPorEvento, onMudou }: { orgId:
   return (
     <div>
       <div className="flex items-center justify-between mb-3 gap-2">
-        <label className="flex items-center gap-2 text-sm text-grafite/70"><input type="checkbox" checked={so} onChange={(e) => setSo(e.target.checked)} className="accent-verde h-4 w-4" />Só com escala</label>
+        <label className="flex items-center gap-2 text-sm text-white/70"><input type="checkbox" checked={so} onChange={(e) => setSo(e.target.checked)} className="accent-[#6EE7B7] h-4 w-4" />Só com escala</label>
         {gere && <Botao variante="secundario" className="h-9" onClick={() => setNovo(true)}><Plus className="h-4 w-4" />Ensaio / reunião</Botao>}
       </div>
       {lista.length === 0 ? <Card><Vazio titulo="Nenhum evento nos próximos 60 dias" /></Card> : (
@@ -70,13 +70,13 @@ function AbaEscalas({ orgId, gere, eventos, escalaPorEvento, onMudou }: { orgId:
               <Card key={e.id} className="p-3.5 flex items-center gap-3" onClick={() => gere ? nav(`/ministerios/${orgId}/escala/${e.id}`) : setAberto(e)}>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{e.titulo}</p>
-                  <p className="text-xs text-grafite/55 mt-0.5">{fmtDiaHora(e.inicio)} · {TIPO_EVENTO_LABEL[e.tipo]}</p>
+                  <p className="text-xs text-white/55 mt-0.5">{fmtDiaHora(e.inicio)} · {TIPO_EVENTO_LABEL[e.tipo]}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   {!s ? <Selo>Sem escala</Selo> : !s.publicada ? <Selo cor="amarelo">Rascunho</Selo> : <Selo cor="verde">{conf}/{tot} confirmados</Selo>}
                   {rec > 0 && <Selo cor="vermelho">{rec} não pode{rec > 1 ? 'm' : ''}</Selo>}
                 </div>
-                {gere && <ChevronRight className="h-5 w-5 text-grafite/30" />}
+                {gere && <ChevronRight className="h-5 w-5 text-white/30" />}
               </Card>
             )
           })}
@@ -98,7 +98,7 @@ function AbaPessoas({ orgId, gere, membros, funcoes, onMudou }: { orgId: string;
     <div>
       {gere && <Botao className="w-full mb-4" onClick={() => setConvidar(true)}><UserPlus className="h-4 w-4" />Adicionar pessoa</Botao>}
       {lista.length === 0 ? <Card><Vazio titulo="Ninguém por aqui ainda" /></Card> : (
-        <Card className="divide-y divide-black/5">
+        <Card className="divide-y divide-white/[0.06]">
           {lista.map((m) => (
             <div key={m.id} className="p-3.5 flex items-center gap-3" onClick={() => gere && setEditando(m)} role={gere ? 'button' : undefined}>
               <Iniciais nome={m.pessoas.nome} />
@@ -110,7 +110,7 @@ function AbaPessoas({ orgId, gere, membros, funcoes, onMudou }: { orgId: string;
                   {!m.pessoas.user_id && <Selo cor="amarelo">Sem acesso ainda</Selo>}
                 </div>
               </div>
-              {gere && <ChevronRight className="h-5 w-5 text-grafite/30" />}
+              {gere && <ChevronRight className="h-5 w-5 text-white/30" />}
             </div>
           ))}
         </Card>
@@ -152,7 +152,7 @@ function PainelMembro({ membro, onFechar, orgId, funcoes, onMudou }: { membro: M
     <Painel aberto onFechar={() => { setUltimo(null); onFechar() }} titulo={membro.pessoas.nome}
       rodape={<div className="flex gap-2"><Botao variante="perigo" onClick={remover}><Trash2 className="h-4 w-4" /></Botao><Botao className="flex-1" onClick={salvar}>Salvar</Botao></div>}>
       <div className="space-y-4">
-        {membro.pessoas.telefone && <p className="text-sm text-grafite/60">WhatsApp: {fmtTel(membro.pessoas.telefone)}</p>}
+        {membro.pessoas.telefone && <p className="text-sm text-white/60">WhatsApp: {fmtTel(membro.pessoas.telefone)}</p>}
         <Campo rotulo="Funções"><SeletorFuncoes funcoes={funcoes} valor={fun} onChange={setFun} /></Campo>
         {sup && (
           <Campo rotulo="Papel">
@@ -186,14 +186,14 @@ function AbaFuncoes({ orgId, gere, funcoes, onMudou }: { orgId: string; gere: bo
   }
   return (
     <div>
-      <p className="text-sm text-grafite/60 mb-3">Funções são as posições da escala (ex.: Vocal, Bateria, Câmera, Sala Berçário).</p>
+      <p className="text-sm text-white/60 mb-3">Funções são as posições da escala (ex.: Vocal, Bateria, Câmera, Sala Berçário).</p>
       {gere && <Botao variante="secundario" className="w-full mb-3" onClick={() => setPainel(true)}><Plus className="h-4 w-4" />Nova função</Botao>}
       {funcoes.length === 0 ? <Card><Vazio titulo="Nenhuma função ainda" /></Card> : (
-        <Card className="divide-y divide-black/5">
+        <Card className="divide-y divide-white/[0.06]">
           {funcoes.map((f) => (
             <div key={f.id} className="p-3.5 flex items-center">
               <span className="flex-1 font-medium">{f.nome}</span>
-              {gere && <button onClick={() => remover(f)} className="p-2 text-grafite/40 hover:text-red-600" aria-label="Remover"><Trash2 className="h-4 w-4" /></button>}
+              {gere && <button onClick={() => remover(f)} className="p-2 text-white/40 hover:text-red-300" aria-label="Remover"><Trash2 className="h-4 w-4" /></button>}
             </div>
           ))}
         </Card>
