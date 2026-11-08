@@ -1,0 +1,8 @@
+# Configuração do Supabase CLI (usada pelo deploy automático no GitHub Actions)
+project_id = "unida-one"
+
+[functions.whatsapp]
+verify_jwt = false
+
+[functions.ativar-convite]
+verify_jwt = false

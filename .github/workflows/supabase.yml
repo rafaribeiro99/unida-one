@@ -1,0 +1,46 @@
+name: Deploy Supabase
+
+# Aplica as migrações do banco e publica as funções no projeto Supabase da igreja
+# sempre que algo em supabase/ muda na branch main (ou manualmente pela aba Actions).
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/**', '.github/workflows/supabase.yml']
+  workflow_dispatch:
+
+concurrency: supabase-deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: qlniueupksdhnkljwpan
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Conectar ao projeto
+        run: supabase link --project-ref "$PROJECT_REF"
+
+      - name: Aplicar migrações do banco
+        run: supabase db push --include-all
+
+      - name: Publicar funções
+        run: supabase functions deploy --project-ref "$PROJECT_REF" --use-api
+
+      - name: Configurar WhatsApp (se as chaves existirem)
+        env:
+          EVOLUTION_URL: ${{ secrets.EVOLUTION_URL }}
+          EVOLUTION_INSTANCE: ${{ secrets.EVOLUTION_INSTANCE }}
+          EVOLUTION_APIKEY: ${{ secrets.EVOLUTION_APIKEY }}
+        run: |
+          if [ -n "$EVOLUTION_URL" ] && [ -n "$EVOLUTION_INSTANCE" ] && [ -n "$EVOLUTION_APIKEY" ]; then
+            supabase secrets set --project-ref "$PROJECT_REF" \
+              EVOLUTION_URL="$EVOLUTION_URL" EVOLUTION_INSTANCE="$EVOLUTION_INSTANCE" EVOLUTION_APIKEY="$EVOLUTION_APIKEY"
+          else
+            echo "Chaves da Evolution ainda não cadastradas — pulando."
+          fi
