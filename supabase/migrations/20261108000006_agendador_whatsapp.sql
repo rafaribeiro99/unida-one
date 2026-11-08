@@ -7,7 +7,7 @@ select cron.schedule(
   'unida-whatsapp',
   '* * * * *',
   $$ select net.http_post(
-       url := 'https://qlniueupksdhnkljwpan.supabase.co/functions/v1/whatsapp',
+       url := 'https://fpmxrpaneklmmnwswyqw.supabase.co/functions/v1/whatsapp',
        headers := '{"Content-Type": "application/json"}'::jsonb,
        body := '{}'::jsonb) $$
 );

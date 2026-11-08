@@ -38,7 +38,7 @@ npm run dev
 
 1. Cloudflare → Workers & Pages → Create → Pages → Connect to Git → `rafaribeiro99/unida-one`.
 2. Build command: `npm run build` · Output directory: `dist`.
-3. Variáveis de ambiente: `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+3. Variáveis de ambiente: não precisa — as chaves públicas estão em `.env.production`.
 4. Custom domains → `one.unidadagraca.com.br`.
 
 ## Supabase
