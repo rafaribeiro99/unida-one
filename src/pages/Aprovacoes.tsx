@@ -37,7 +37,7 @@ export default function Aprovacoes() {
           {decidir.length === 0 ? <Card><Vazio icone={<CheckSquare className="h-6 w-6" />} titulo="Nada pendente" texto="Quando alguém pedir uma inclusão, evento ou troca, aparece aqui." /></Card>
             : <div className="space-y-3">{decidir.map((s) => <CartaoSol key={s.id} s={s} podeDecidir onMudou={reload} />)}</div>}
           {historico.length > 0 && (<>
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-white/50 mt-8 mb-2">Decididas recentemente</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-grafite/50 mt-8 mb-2">Decididas recentemente</h2>
             <div className="space-y-2">{historico.map((s) => <CartaoSol key={s.id} s={s} onMudou={reload} />)}</div>
           </>)}
         </>
@@ -77,29 +77,29 @@ function CartaoSol({ s, podeDecidir, meu, onMudou }: { s: Sol; podeDecidir?: boo
     <Card className="p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-verde-glow">{TITULO[s.tipo]}{s.org ? ` · ${s.org.nome}` : ''}</p>
-          {!meu && <p className="text-xs text-white/50 mt-0.5">Pedido de {s.solicitante?.nome ?? '—'} · {fmtDiaHora(s.criado_em)}</p>}
+          <p className="text-xs font-semibold uppercase tracking-wide text-verde-2">{TITULO[s.tipo]}{s.org ? ` · ${s.org.nome}` : ''}</p>
+          {!meu && <p className="text-xs text-grafite/50 mt-0.5">Pedido de {s.solicitante?.nome ?? '—'} · {fmtDiaHora(s.criado_em)}</p>}
         </div>
         {status}
       </div>
       <div className="mt-3 text-sm space-y-1">
         {s.tipo === 'convite' && (<>
-          <p className="font-semibold text-white">{dd.nome}</p>
-          {dd.telefone && <p className="text-white/60">WhatsApp: {fmtTel(dd.telefone)}</p>}
-          {dd.papel && dd.papel !== 'membro' && <p className="text-white/60">Papel: {PAPEL_LABEL[dd.papel as Papel]}</p>}
+          <p className="font-semibold text-verde">{dd.nome}</p>
+          {dd.telefone && <p className="text-grafite/60">WhatsApp: {fmtTel(dd.telefone)}</p>}
+          {dd.papel && dd.papel !== 'membro' && <p className="text-grafite/60">Papel: {PAPEL_LABEL[dd.papel as Papel]}</p>}
         </>)}
         {s.tipo.startsWith('evento') && (<>
-          <p className="font-semibold text-white">{dd.titulo ?? s.eventos?.titulo}</p>
-          {dd.inicio && <p className="text-white/60">{fmtDiaHora(dd.inicio)}{dd.tipo ? ` · ${TIPO_EVENTO_LABEL[dd.tipo as keyof typeof TIPO_EVENTO_LABEL]}` : ''}{dd.repetir_ate ? ` · toda semana até ${dd.repetir_ate.split('-').reverse().join('/')}` : ''}</p>}
-          {s.tipo !== 'evento_criar' && s.eventos && <p className="text-white/60">Evento atual: {fmtDiaHora(s.eventos.inicio)}</p>}
-          {dd.local && <p className="text-white/60">Local: {dd.local}</p>}
+          <p className="font-semibold text-verde">{dd.titulo ?? s.eventos?.titulo}</p>
+          {dd.inicio && <p className="text-grafite/60">{fmtDiaHora(dd.inicio)}{dd.tipo ? ` · ${TIPO_EVENTO_LABEL[dd.tipo as keyof typeof TIPO_EVENTO_LABEL]}` : ''}{dd.repetir_ate ? ` · toda semana até ${dd.repetir_ate.split('-').reverse().join('/')}` : ''}</p>}
+          {s.tipo !== 'evento_criar' && s.eventos && <p className="text-grafite/60">Evento atual: {fmtDiaHora(s.eventos.inicio)}</p>}
+          {dd.local && <p className="text-grafite/60">Local: {dd.local}</p>}
         </>)}
         {s.tipo === 'troca' && (<>
-          <p className="font-semibold text-white">{dd.resumo}</p>
-          <p className="text-white/70">Motivo: {dd.motivo}</p>
-          <p className="text-white/70">{dd.substituto_nome ? `Substituto sugerido: ${dd.substituto_nome}` : 'Sem substituto: você escolhe depois de aprovar.'}</p>
+          <p className="font-semibold text-verde">{dd.resumo}</p>
+          <p className="text-grafite/70">Motivo: {dd.motivo}</p>
+          <p className="text-grafite/70">{dd.substituto_nome ? `Substituto sugerido: ${dd.substituto_nome}` : 'Sem substituto: você escolhe depois de aprovar.'}</p>
         </>)}
-        {s.resposta && <p className="text-white/60 italic">“{s.resposta}”</p>}
+        {s.resposta && <p className="text-grafite/60 italic">“{s.resposta}”</p>}
       </div>
       {token && <div className="mt-3"><LinkConvite nome={dd.nome} telefone={dd.telefone} token={token} /><Botao variante="fantasma" className="w-full mt-2" onClick={onMudou}>Concluir</Botao></div>}
       {podeDecidir && s.status === 'pendente' && !token && (

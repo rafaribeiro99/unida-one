@@ -3,20 +3,17 @@
 @tailwind utilities;
 
 html, body, #root { min-height: 100%; }
-html { background: #07110E; color-scheme: dark; }
-body {
-  @apply text-white font-sans antialiased;
-  background:
-    radial-gradient(600px 380px at 100% -5%, rgba(110,231,183,0.13), transparent 70%),
-    radial-gradient(520px 420px at -10% 105%, rgba(20,92,70,0.35), transparent 70%),
-    #07110E;
-  background-attachment: fixed;
-  -webkit-tap-highlight-color: transparent;
-}
+html { background: #F5F7F4; }
+body { @apply bg-fundo text-grafite font-sans antialiased; -webkit-tap-highlight-color: transparent; }
 h1, h2, h3 { @apply font-titulo; }
 @keyframes subir { from { transform: translateY(24px); opacity: .6 } to { transform: none; opacity: 1 } }
-.pb-nav { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-input[type="date"], input[type="time"] { color-scheme: dark; }
-select option { background: #0C1A15; color: #fff; }
+.pb-nav { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
 .sem-barra::-webkit-scrollbar { display: none; }
 .sem-barra { scrollbar-width: none; }
+/* Bloco escuro da marca (topo das telas principais) */
+.bloco-marca {
+  background:
+    radial-gradient(420px 260px at 105% -10%, rgba(110,231,183,0.28), transparent 65%),
+    radial-gradient(360px 260px at -15% 120%, rgba(20,92,70,0.7), transparent 70%),
+    #0B2E26;
+}

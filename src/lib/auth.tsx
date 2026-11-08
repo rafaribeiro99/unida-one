@@ -21,6 +21,8 @@ interface Ctx {
   gerencio: (id: string | null) => boolean
   supervisiono: (id: string | null) => boolean
   aprovador: boolean
+  /** pastor, secretaria, coordenador, supervisor ou admin: vê a dinâmica completa dos cultos */
+  visaoGeral: boolean
   /** ministérios/áreas que tenho (como membro ou gestão), já escaláveis */
   minhasAreas: Org[]
   /** áreas onde posso montar escala */
@@ -87,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const secretaria = admin || vinculos.some((v) => v.papel === 'secretaria')
     const pastor = admin || vinculos.some((v) => v.papel === 'pastor')
     const aprovador = admin || secretaria || vinculos.some((v) => GESTAO.includes(v.papel))
+    const visaoGeral = admin || secretaria || pastor || vinculos.some((v) => SUPERVISAO.includes(v.papel))
     const escalaveis = orgs.filter((o) => ESCALAVEIS.includes(o.tipo) && !(o.tipo === 'pilar' && ['Ministerial', 'Grupos Pequenos'].includes(o.nome)))
     const areasQueGerencio = escalaveis.filter((o) => gerencio(o.id))
     const membroDe = new Set(vinculos.map((v) => v.org_id))
@@ -94,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const caminho = (id: string | null) => ancestrais(id).reverse().slice(1).map((x) => orgPorId.get(x)?.nome).join(' › ')
     return {
       session, carregando, eu, vinculos, orgs, orgPorId, admin, secretaria, pastor, ancestrais, gerencio, supervisiono,
-      aprovador, minhasAreas, areasQueGerencio, caminho,
+      aprovador, visaoGeral, minhasAreas, areasQueGerencio, caminho,
       recarregar: () => carregarPerfil(session),
       sair: async () => { await supabase.auth.signOut() },
     }

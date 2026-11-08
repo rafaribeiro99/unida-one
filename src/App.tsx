@@ -15,6 +15,7 @@ import EscalaEditor from './pages/EscalaEditor'
 import Aprovacoes from './pages/Aprovacoes'
 import Perfil from './pages/Perfil'
 import Admin from './pages/Admin'
+import Culto from './pages/Culto'
 
 function Protegida({ children }: { children: ReactNode }) {
   const { session, carregando, eu } = useAuth()
@@ -30,9 +31,9 @@ function SemCadastro() {
   return (
     <div className="min-h-screen grid place-items-center p-6 text-center">
       <div className="max-w-sm space-y-3">
-        <h1 className="font-titulo text-xl font-bold text-white">Acesso não vinculado</h1>
-        <p className="text-sm text-white/70">Seu login não está ligado a nenhum cadastro do UNIDA ONE. Peça ao seu líder um link de convite.</p>
-        <button onClick={sair} className="text-verde-glow font-semibold text-sm">Sair</button>
+        <h1 className="font-titulo text-xl font-bold text-verde">Acesso não vinculado</h1>
+        <p className="text-sm text-grafite/70">Seu login não está ligado a nenhum cadastro do UNIDA ONE. Peça ao seu líder um link de convite.</p>
+        <button onClick={sair} className="text-verde-2 font-semibold text-sm">Sair</button>
       </div>
     </div>
   )
@@ -51,6 +52,7 @@ export default function App() {
             <Route element={<Protegida><Layout /></Protegida>}>
               <Route index element={<Inicio />} />
               <Route path="agenda" element={<Agenda />} />
+              <Route path="culto/:id" element={<Culto />} />
               <Route path="ministerios" element={<Ministerios />} />
               <Route path="ministerios/:id" element={<Ministerio />} />
               <Route path="ministerios/:orgId/escala/:eventoId" element={<EscalaEditor />} />

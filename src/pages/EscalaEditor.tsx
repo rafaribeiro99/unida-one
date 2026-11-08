@@ -93,13 +93,14 @@ export default function EscalaEditor() {
 
   return (
     <div>
-      <Link to={`/ministerios/${orgId}`} className="inline-flex items-center gap-1 text-sm text-white/50 mb-2"><ArrowLeft className="h-4 w-4" />{org.nome}</Link>
-      <h1 className="font-titulo text-[22px] font-bold text-white leading-tight">{evento.titulo}</h1>
-      <p className="text-sm text-white/60 mt-1">{fmtDiaHora(evento.inicio)} – {fmtHora(evento.fim)}{evento.local ? ` · ${evento.local}` : ''}</p>
+      <Link to={`/ministerios/${orgId}`} className="inline-flex items-center gap-1 text-sm text-grafite/50 mb-2"><ArrowLeft className="h-4 w-4" />{org.nome}</Link>
+      <h1 className="font-titulo text-[22px] font-bold text-verde leading-tight">{evento.titulo}</h1>
+      <p className="text-sm text-grafite/60 mt-1">{fmtDiaHora(evento.inicio)} – {fmtHora(evento.fim)}{evento.local ? ` · ${evento.local}` : ''}</p>
       <div className="flex gap-2 mt-3 mb-5 flex-wrap">
         <Selo cor="claro">Escala: {org.nome}</Selo>
         {!escala || !escala.publicada ? <Selo cor="amarelo">Rascunho — ninguém foi avisado</Selo> : <Selo cor="verde">Publicada</Selo>}
         {evento.cancelado && <Selo cor="vermelho">Evento cancelado</Selo>}
+        <Link to={`/culto/${evento.id}`} className="text-xs font-semibold text-verde-2 self-center ml-auto">Ver culto completo →</Link>
       </div>
 
       {!passado && !evento.cancelado && (
@@ -113,25 +114,25 @@ export default function EscalaEditor() {
         <div className="space-y-4">
           {grupos.map((g) => (
             <section key={g.funcao?.id ?? 'sem'}>
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-white/50 mb-2">{g.funcao?.nome ?? 'Sem função definida'} <span className="text-white/30">· {g.alocs.length}</span></h2>
-              {g.alocs.length === 0 ? <p className="text-sm text-white/40 mb-1">Ninguém escalado.</p> : (
-                <Card className="divide-y divide-white/[0.06]">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-grafite/50 mb-2">{g.funcao?.nome ?? 'Sem função definida'} <span className="text-grafite/30">· {g.alocs.length}</span></h2>
+              {g.alocs.length === 0 ? <p className="text-sm text-grafite/40 mb-1">Ninguém escalado.</p> : (
+                <Card className="divide-y divide-black/[0.06]">
                   {g.alocs.map((a) => {
                     const cs = conflitos.filter((c) => c.alocacao_id === a.id)
                     const vermelho = cs.some((c) => c.posterior)
                     return (
-                      <div key={a.id} className={clsx('p-3.5', vermelho && 'bg-red-500/10')}>
+                      <div key={a.id} className={clsx('p-3.5', vermelho && 'bg-red-50')}>
                         <div className="flex items-center gap-3">
                           <Iniciais nome={a.pessoas.nome} />
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{a.pessoas.nome}</p>
-                            {a.status === 'recusada' && a.motivo && <p className="text-xs text-red-300">Motivo: {a.motivo}</p>}
+                            {a.status === 'recusada' && a.motivo && <p className="text-xs text-red-600">Motivo: {a.motivo}</p>}
                           </div>
                           {escala?.publicada && a.notificado_em ? <StatusAloc status={a.status} /> : <Selo>Não avisado</Selo>}
-                          {!passado && <button onClick={() => remover(a)} className="p-2 -mr-2 text-white/35 hover:text-red-300" aria-label="Remover"><Trash2 className="h-4 w-4" /></button>}
+                          {!passado && <button onClick={() => remover(a)} className="p-2 -mr-2 text-grafite/35 hover:text-red-600" aria-label="Remover"><Trash2 className="h-4 w-4" /></button>}
                         </div>
                         {cs.map((c, i) => (
-                          <p key={i} className={clsx('mt-2 ml-12 text-xs flex items-start gap-1.5', c.posterior ? 'text-red-300 font-medium' : 'text-amber-200')}>
+                          <p key={i} className={clsx('mt-2 ml-12 text-xs flex items-start gap-1.5', c.posterior ? 'text-red-600 font-medium' : 'text-amber-700')}>
                             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
                             {c.origem === 'indisponivel' ? c.descricao : c.posterior ? `Conflito: já estava escalado(a) em ${c.descricao}` : `Também escalado(a) depois em ${c.descricao} — esta escala tem prioridade`}
                           </p>
@@ -206,10 +207,10 @@ function PainelEscalar({ aberto, onFechar, evento, escalaId, funcoes, membros, a
         <div className="flex gap-2 overflow-x-auto pb-3 -mx-5 px-5">
           {funcoes.map((f) => (
             <button key={f.id} onClick={() => setFuncao(f.id)} className={clsx('shrink-0 rounded-full px-3.5 h-8 text-sm font-medium border',
-              funcao === f.id ? 'bg-verde-claro text-escuro border-verde-claro' : 'bg-white/[0.04] border-white/[0.08] text-white/70')}>{f.nome}</button>
+              funcao === f.id ? 'bg-verde text-white border-verde' : 'bg-white border-black/[0.07] text-grafite/70')}>{f.nome}</button>
           ))}
           <button onClick={() => setFuncao('')} className={clsx('shrink-0 rounded-full px-3.5 h-8 text-sm font-medium border',
-            funcao === '' ? 'bg-verde-claro text-escuro border-verde-claro' : 'bg-white/[0.04] border-white/[0.08] text-white/70')}>Sem função</button>
+            funcao === '' ? 'bg-verde text-white border-verde' : 'bg-white border-black/[0.07] text-grafite/70')}>Sem função</button>
         </div>
       )}
       {membros.length === 0 ? <Vazio titulo="Nenhuma pessoa no ministério" texto="Adicione pessoas na aba Pessoas do ministério." /> : (
@@ -221,14 +222,14 @@ function PainelEscalar({ aberto, onFechar, evento, escalaId, funcoes, membros, a
             return (
               <button key={m.pessoa_id} disabled={ja || salvando === m.pessoa_id} onClick={() => escalar(m)}
                 className={clsx('w-full text-left flex items-center gap-3 rounded-xl p-2.5 border transition disabled:opacity-50',
-                  cs ? 'bg-red-500/10 border-red-400/25' : 'bg-white/[0.04] border-white/[0.08] hover:border-verde-glow/40')}>
+                  cs ? 'bg-red-50 border-red-200' : 'bg-white border-black/[0.07] hover:border-verde-2/30')}>
                 <Iniciais nome={m.pessoas.nome} />
                 <div className="flex-1 min-w-0">
-                  <p className={clsx('font-medium truncate', !temFuncao && 'text-white/50')}>{m.pessoas.nome}</p>
-                  {cs ? cs.map((c, i) => <p key={i} className="text-xs text-red-300 truncate">{c.origem === 'indisponivel' ? c.descricao : `Já escalado: ${c.descricao}`}</p>)
-                    : !temFuncao ? <p className="text-xs text-white/40">Não tem esta função</p> : null}
+                  <p className={clsx('font-medium truncate', !temFuncao && 'text-grafite/50')}>{m.pessoas.nome}</p>
+                  {cs ? cs.map((c, i) => <p key={i} className="text-xs text-red-600 truncate">{c.origem === 'indisponivel' ? c.descricao : `Já escalado: ${c.descricao}`}</p>)
+                    : !temFuncao ? <p className="text-xs text-grafite/40">Não tem esta função</p> : null}
                 </div>
-                {ja ? <Selo cor="verde">Escalado</Selo> : <Plus className="h-5 w-5 text-verde-glow" />}
+                {ja ? <Selo cor="verde">Escalado</Selo> : <Plus className="h-5 w-5 text-verde-2" />}
               </button>
             )
           })}
