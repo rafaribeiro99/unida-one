@@ -3,7 +3,7 @@ export type Papel = 'pastor' | 'secretaria' | 'coordenador' | 'supervisor' | 'li
 export type EventoTipo = 'culto' | 'ebd' | 'curso' | 'ensaio' | 'reuniao' | 'gp' | 'evento' | 'pastoral'
 export type AlocStatus = 'pendente' | 'confirmada' | 'recusada'
 
-export interface Org { id: string; unidade_id: string; parent_id: string | null; tipo: OrgTipo; nome: string; descricao: string | null; ordem: number; ativo: boolean }
+export interface Org { id: string; unidade_id: string; parent_id: string | null; tipo: OrgTipo; nome: string; descricao: string | null; ordem: number; ativo: boolean; tem_repertorio?: boolean }
 export interface Pessoa { id: string; unidade_id: string; user_id: string | null; nome: string; telefone: string | null; email: string | null; is_admin: boolean; ativo: boolean }
 export interface Vinculo { id: string; pessoa_id: string; org_id: string; papel: Papel; funcao_ids: string[]; ativo: boolean }
 export interface Funcao { id: string; org_id: string; nome: string; ordem: number }
