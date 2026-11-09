@@ -61,7 +61,6 @@ export default function Culto() {
   const [editRep, setEditRep] = useState<string | null>(null)
   const [equipeAberta, setEquipeAberta] = useState<Equipe | null>(null)
   const [todas, setTodas] = useState(false)
-  const [itemAberto, setItemAberto] = useState<ItemProgramacao | null>(null)
   const arquivo = useRef<HTMLInputElement>(null)
 
   const { data, loading, reload } = useData(async () => {
@@ -204,21 +203,29 @@ export default function Culto() {
         {/* Programação */}
         {programacao.length > 0 && (
           <section>
-            <TituloSecao icone={CalendarCheck}>Programação do culto</TituloSecao>
-            <Superficie>
-              {programacao.map((it, i) => (
-                <button key={it.chave} onClick={() => setItemAberto(it)} className={clsx('w-full flex items-center gap-3.5 px-4 py-3.5 text-left', i > 0 && 'border-t border-black/[0.05]')}>
-                  <span className="h-7 w-7 shrink-0 rounded-lg bg-verde-claro/35 text-verde text-[13px] font-bold grid place-items-center">{i + 1}</span>
-                  <it.icone className="h-5 w-5 shrink-0 text-ouro" strokeWidth={1.7} />
-                  <span className="h-8 w-px bg-black/[0.07]" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-semibold text-verde leading-tight">{it.titulo}</p>
-                    <p className={clsx('text-[13px] truncate', it.quem === 'A definir' ? 'text-amber-600' : 'text-grafite/55')}>{it.quem}{it.obs ? ` · ${it.obs}` : ''}</p>
-                  </div>
-                  <ChevronRight className="h-[18px] w-[18px] text-grafite/30" />
-                </button>
-              ))}
-            </Superficie>
+            <TituloSecao icone={CalendarCheck} acao={!passado && (liturgia.length ? editoLit : (pastoral && (pastor || secretaria || gerencio(pastoral.org_id))))
+              ? (liturgia.length || !pastoral
+                ? <button onClick={() => setEditLit(true)}>Editar</button>
+                : <Link to={`/ministerios/${pastoral.org_id}/escala/${evento.id}`}>Editar</Link>)
+              : undefined}>Programação</TituloSecao>
+            {programacao.length <= 3 ? (
+              <Superficie className="grid divide-x divide-black/[0.06]" style={{ gridTemplateColumns: `repeat(${programacao.length}, minmax(0, 1fr))` }}>
+                {programacao.map((it) => <MomentoColuna key={it.chave} it={it} eu={!!eu && it.alocs.some((a) => a.pessoa_id === eu.id)} />)}
+              </Superficie>
+            ) : (
+              <Superficie className="divide-y divide-black/[0.05]">
+                {programacao.map((it) => {
+                  const souEu = !!eu && it.alocs.some((a) => a.pessoa_id === eu.id)
+                  return (
+                    <div key={it.chave} className="flex items-center gap-3 px-4 py-3">
+                      <it.icone className="h-[18px] w-[18px] shrink-0 text-ouro" strokeWidth={1.7} />
+                      <span className="text-[14px] font-semibold text-verde flex-1 min-w-0 truncate">{it.titulo}</span>
+                      <span className={clsx('text-[13px] truncate max-w-[50%]', it.quem === 'A definir' ? 'text-amber-600' : souEu ? 'text-[#9A7A35] font-semibold' : 'text-grafite/55')}>{souEu ? 'Você' : it.quem}</span>
+                    </div>
+                  )
+                })}
+              </Superficie>
+            )}
           </section>
         )}
         {programacao.length === 0 && editoLit && !passado && (
@@ -297,8 +304,6 @@ export default function Culto() {
           {podeEditar && <Botao variante="perigo" className="w-full justify-start" onClick={() => { setMenu(false); setCancelando(true) }}><Trash2 className="h-4 w-4" />Cancelar evento</Botao>}
         </div>
       </Painel>
-      <PainelPessoas titulo={itemAberto?.titulo ?? ''} aberto={!!itemAberto} onFechar={() => setItemAberto(null)} alocs={itemAberto?.alocs ?? []} meuId={eu?.id}
-        vazio={itemAberto?.quem && itemAberto.quem !== 'A definir' ? itemAberto.quem : 'Ainda não há ninguém escalado para este momento.'} />
       <PainelEquipe equipe={equipeAberta} onFechar={() => setEquipeAberta(null)} meuId={eu?.id} gere={!!equipeAberta && gerencio(equipeAberta.org_id)} eventoId={evento.id} passado={passado} />
       <Painel aberto={todas} onFechar={() => setTodas(false)} titulo="Escala completa">
         <div className="space-y-5 pb-2">{equipes.map((e) => <ListaEquipe key={e.id} equipe={e} meuId={eu?.id} titulo />)}</div>
@@ -310,12 +315,29 @@ export default function Culto() {
   )
 }
 
-function Superficie({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={clsx('rounded-[22px] bg-white border border-black/[0.04] shadow-[0_10px_30px_-20px_rgba(16,24,20,0.35)] overflow-hidden', className)}>{children}</div>
+function Superficie({ children, className, style }: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
+  return <div style={style} className={clsx('rounded-[22px] bg-white border border-black/[0.04] shadow-[0_10px_30px_-20px_rgba(16,24,20,0.35)] overflow-hidden', className)}>{children}</div>
 }
 
-function TituloSecao({ icone: Icone, children }: { icone: LucideIcon; children: ReactNode }) {
-  return <h2 className="flex items-center gap-2.5 mb-3 px-1 font-titulo font-bold text-[18px] text-verde"><Icone className="h-5 w-5" strokeWidth={1.8} />{children}</h2>
+function TituloSecao({ icone: Icone, children, acao }: { icone: LucideIcon; children: ReactNode; acao?: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between mb-3 px-1">
+      <h2 className="flex items-center gap-2.5 font-titulo font-bold text-[18px] text-verde"><Icone className="h-5 w-5" strokeWidth={1.8} />{children}</h2>
+      {acao && <span className="text-[13px] font-semibold text-verde-2">{acao}</span>}
+    </div>
+  )
+}
+
+function MomentoColuna({ it, eu }: { it: ItemProgramacao; eu: boolean }) {
+  return (
+    <div className="px-3 py-3.5 min-w-0">
+      <it.icone className="h-[18px] w-[18px] text-ouro" strokeWidth={1.8} />
+      <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-grafite/45 leading-tight">{it.titulo}</p>
+      <p className={clsx('mt-1.5 text-[13.5px] font-semibold leading-snug line-clamp-2', it.quem === 'A definir' ? 'text-amber-600' : 'text-verde')}>{it.quem}</p>
+      {it.obs && <p className="text-[11px] text-grafite/45 truncate mt-0.5">{it.obs}</p>}
+      {eu && <span className="inline-block mt-1.5 rounded-full bg-ouro/15 text-[#9A7A35] text-[10.5px] font-bold px-2 py-0.5">Você</span>}
+    </div>
+  )
 }
 
 function CaixaNumero({ icone: Icone, valor, rotulo }: { icone: LucideIcon; valor: number; rotulo: string }) {
@@ -429,26 +451,6 @@ function PainelEquipe({ equipe, onFechar, meuId, gere, eventoId, passado }: { eq
     <Painel aberto onFechar={onFechar} titulo={equipe.nome}
       rodape={gere && !passado ? <Link to={`/ministerios/${equipe.org_id}/escala/${eventoId}`}><Botao className="w-full"><Pencil className="h-4 w-4" />Editar escala</Botao></Link> : undefined}>
       <div className="pb-2"><ListaEquipe equipe={equipe} meuId={meuId} /></div>
-    </Painel>
-  )
-}
-
-function PainelPessoas({ titulo, aberto, onFechar, alocs, meuId, vazio }: { titulo: string; aberto: boolean; onFechar: () => void; alocs: Aloc[]; meuId?: string; vazio: string }) {
-  return (
-    <Painel aberto={aberto} onFechar={onFechar} titulo={titulo}>
-      <div className="space-y-1.5 pb-2">
-        {alocs.length === 0 ? <p className="text-sm text-grafite/60">{vazio}</p> : alocs.map((a) => (
-          <div key={a.id} className={clsx('flex items-center gap-2.5 rounded-xl px-3 py-2.5', a.pessoa_id === meuId ? 'bg-verde-claro/30' : 'bg-white')}>
-            <Iniciais nome={a.nome} className="h-9 w-9 text-xs" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-verde truncate">{a.nome}{a.pessoa_id === meuId ? ' (você)' : ''}</p>
-              <p className="text-xs text-grafite/50">{a.funcao}</p>
-            </div>
-            {a.status && <StatusAloc status={a.status} />}
-          </div>
-        ))}
-        {alocs.some((a) => a.pessoa_id === meuId) && <p className="text-xs text-grafite/50 pt-2">Precisa trocar? Use "Pedir troca" na sua escala, na tela inicial.</p>}
-      </div>
     </Painel>
   )
 }
