@@ -6,7 +6,7 @@ import { ptBR } from 'date-fns/locale'
 import {
   AlertCircle, ArrowLeft, ArrowRight, BarChart3, BookOpen, CalendarCheck, CalendarDays, Check, CheckCircle2, ChevronRight, Clock, Coins, Drum,
   Flag, Guitar, ImagePlus, ListMusic, MapPin, MessageCircle, MicVocal, MoreHorizontal, Music2, Music4, Pencil, Piano, Trash2, Users, UsersRound, X,
-  CircleDashed, type LucideIcon,
+  CircleDashed, Megaphone, type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useData, q } from '../lib/useData'
@@ -96,14 +96,14 @@ export default function Culto() {
   if (liturgia.length) {
     programacao = liturgia.filter((it) => !louvorOrgs.some((o) => o.id === it.org_id)).map((it) => {
       const al = it.funcao_id ? ativos(equipes.flatMap((e) => e.alocacoes)).filter((a) => a.funcao_id === it.funcao_id) : []
-      return { chave: it.id, titulo: it.titulo, quem: al.length ? nomes(al) : it.responsavel_texto ?? (it.funcao_id ? 'A definir' : ''), icone: /oferta|d[ií]zimo/i.test(it.titulo) ? Coins : /mensagem|prega|palavra/i.test(it.titulo) ? BookOpen : Flag, alocs: al, obs: it.observacao }
+      return { chave: it.id, titulo: it.titulo, quem: al.length ? nomes(al) : it.responsavel_texto ?? (it.funcao_id ? 'A definir' : ''), icone: /oferta|d[ií]zimo/i.test(it.titulo) ? Coins : /aviso/i.test(it.titulo) ? Megaphone : /mensagem|prega|palavra/i.test(it.titulo) ? BookOpen : Flag, alocs: al, obs: it.observacao }
     })
   } else if (cultoPadrao) {
-    const ab = daFuncao(/abertura/i), of = daFuncao(/oferta|d[ií]zimo/i), pr = daFuncao(/prega|mensagem|palavra/i), or = daFuncao(/ora[cç][aã]o/i)
+    const ab = daFuncao(/abertura/i), of = daFuncao(/oferta|d[ií]zimo/i), av = daFuncao(/aviso/i), pr = daFuncao(/prega|mensagem|palavra/i)
     programacao = [
       { chave: 'abertura', titulo: 'Abertura', quem: nomes(ab) || 'A definir', icone: Flag, alocs: ab },
-      ...(or.length ? [{ chave: 'oracao', titulo: 'Oração', quem: nomes(or), icone: Flag, alocs: or }] : []),
       { chave: 'oferta', titulo: 'Dízimos e Ofertas', quem: nomes(of) || 'A definir', icone: Coins, alocs: of },
+      { chave: 'avisos', titulo: 'Avisos', quem: nomes(av) || 'A definir', icone: Megaphone, alocs: av },
       { chave: 'mensagem', titulo: 'Mensagem', quem: nomes(pr) || 'A definir', icone: BookOpen, alocs: pr },
     ]
   }
@@ -208,11 +208,7 @@ export default function Culto() {
                 ? <button onClick={() => setEditLit(true)}>Editar</button>
                 : <Link to={`/ministerios/${pastoral.org_id}/escala/${evento.id}`}>Editar</Link>)
               : undefined}>Programação</TituloSecao>
-            {programacao.length <= 3 ? (
-              <Superficie className="grid divide-x divide-black/[0.06]" style={{ gridTemplateColumns: `repeat(${programacao.length}, minmax(0, 1fr))` }}>
-                {programacao.map((it) => <MomentoColuna key={it.chave} it={it} eu={!!eu && it.alocs.some((a) => a.pessoa_id === eu.id)} />)}
-              </Superficie>
-            ) : (
+            {(
               <Superficie className="divide-y divide-black/[0.05]">
                 {programacao.map((it) => {
                   const souEu = !!eu && it.alocs.some((a) => a.pessoa_id === eu.id)
@@ -324,18 +320,6 @@ function TituloSecao({ icone: Icone, children, acao }: { icone: LucideIcon; chil
     <div className="flex items-center justify-between mb-3 px-1">
       <h2 className="flex items-center gap-2.5 font-titulo font-bold text-[18px] text-verde"><Icone className="h-5 w-5" strokeWidth={1.8} />{children}</h2>
       {acao && <span className="text-[13px] font-semibold text-verde-2">{acao}</span>}
-    </div>
-  )
-}
-
-function MomentoColuna({ it, eu }: { it: ItemProgramacao; eu: boolean }) {
-  return (
-    <div className="px-3 py-3.5 min-w-0">
-      <it.icone className="h-[18px] w-[18px] text-ouro" strokeWidth={1.8} />
-      <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-grafite/45 leading-tight">{it.titulo}</p>
-      <p className={clsx('mt-1.5 text-[13.5px] font-semibold leading-snug line-clamp-2', it.quem === 'A definir' ? 'text-amber-600' : 'text-verde')}>{it.quem}</p>
-      {it.obs && <p className="text-[11px] text-grafite/45 truncate mt-0.5">{it.obs}</p>}
-      {eu && <span className="inline-block mt-1.5 rounded-full bg-ouro/15 text-[#9A7A35] text-[10.5px] font-bold px-2 py-0.5">Você</span>}
     </div>
   )
 }
