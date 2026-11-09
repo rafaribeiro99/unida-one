@@ -8,10 +8,10 @@ import type { Funcao } from '../lib/types'
 export interface ItemLiturgia { id: string; evento_id: string; ordem: number; titulo: string; org_id: string | null; funcao_id: string | null; responsavel_texto: string | null; horario: string | null; observacao: string | null }
 export interface ItemRepertorio { id: string; org_id: string; ordem: number; tom: string | null; observacao: string | null; musicas: { id: string; titulo: string; artista: string | null; tom: string | null; link: string | null; cifra_link: string | null } }
 
-/** Reduz a imagem no aparelho (máx. 1600px, JPEG) antes de enviar */
+/** Reduz a imagem no aparelho (lado maior até 1600px, JPEG) antes de enviar */
 async function comprimir(f: File): Promise<Blob> {
   const img = await createImageBitmap(f)
-  const escala = Math.min(1, 1600 / img.width)
+  const escala = Math.min(1, 1600 / Math.max(img.width, img.height))
   const c = document.createElement('canvas')
   c.width = Math.round(img.width * escala); c.height = Math.round(img.height * escala)
   c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height)
@@ -21,7 +21,7 @@ async function comprimir(f: File): Promise<Blob> {
 export async function enviarBanner(eventoId: string, f: File, serie: boolean): Promise<number> {
   const blob = await comprimir(f)
   const caminho = `${eventoId}-${Date.now()}.jpg`
-  const { error } = await supabase.storage.from('banners').upload(caminho, blob, { contentType: 'image/jpeg', upsert: true })
+  const { error } = await supabase.storage.from('banners').upload(caminho, blob, { contentType: 'image/jpeg' })
   if (error) throw error
   const url = supabase.storage.from('banners').getPublicUrl(caminho).data.publicUrl
   const { data, error: e2 } = await supabase.rpc('definir_banner', { p_evento: eventoId, p_url: url, p_serie: serie })
