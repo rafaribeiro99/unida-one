@@ -4,15 +4,16 @@ import clsx from 'clsx'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
-  AlertTriangle, ArrowLeft, CalendarDays, Check, CheckCircle2, Clock, Hourglass, ImagePlus, MapPin, MessageCircle, MoreHorizontal,
-  Music2, Pencil, Trash2, X, ExternalLink,
+  AlertCircle, ArrowLeft, ArrowRight, BarChart3, BookOpen, CalendarCheck, CalendarDays, Check, CheckCircle2, ChevronRight, Clock, Coins, Drum,
+  Flag, Guitar, ImagePlus, ListMusic, MapPin, MessageCircle, MicVocal, MoreHorizontal, Music2, Music4, Pencil, Piano, Trash2, Users, UsersRound, X,
+  CircleDashed, type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useData, q } from '../lib/useData'
 import { supabase, msgErro, dispararWhatsApp } from '../lib/supabase'
 import { d, fmtHora } from '../lib/datas'
 import { TIPO_EVENTO_LABEL, type Evento } from '../lib/types'
-import { Botao, Card, Carregando, Iniciais, Painel, StatusAloc, useAviso } from '../components/ui'
+import { Botao, Carregando, Iniciais, Painel, StatusAloc, useAviso } from '../components/ui'
 import { FormEvento } from '../components/Eventos'
 import { carregarMeusLideres } from '../lib/contatos'
 import { linkWhats } from '../lib/whats'
@@ -33,7 +34,20 @@ export async function carregarEquipes(eventoId: string): Promise<Equipe[]> {
   return [...m.values()].sort((a, b) => (a.nome === 'Pastoral' ? -1 : b.nome === 'Pastoral' ? 1 : a.nome.localeCompare(b.nome)))
 }
 
-const primeiro = (n: string) => n.replace(/^(Pr\.|Pra\.)\s+/, '$1 ').split(' ').slice(0, 2).join(' ')
+const curto = (n: string) => { const p = n.split(' '); return /^(pr|pra|pb|dc|ev)\.?$/i.test(p[0]) ? p.slice(0, 3).join(' ') : p.slice(0, 2).join(' ') }
+const capitalizar = (t: string) => t[0].toUpperCase() + t.slice(1)
+const ativos = (a: Aloc[]) => a.filter((x) => x.status !== 'recusada')
+
+/** Ícone do instrumento/função do louvor */
+function iconeFuncao(f: string): LucideIcon {
+  if (/voc|voz|cant|ministr/i.test(f)) return MicVocal
+  if (/tecl|piano/i.test(f)) return Piano
+  if (/bater|perc/i.test(f)) return Drum
+  if (/guit|viol|baix/i.test(f)) return Guitar
+  return Music4
+}
+
+interface ItemProgramacao { chave: string; titulo: string; quem: string; icone: LucideIcon; alocs: Aloc[]; obs?: string | null }
 
 export default function Culto() {
   const { id = '' } = useParams()
@@ -46,6 +60,8 @@ export default function Culto() {
   const [editLit, setEditLit] = useState(false)
   const [editRep, setEditRep] = useState<string | null>(null)
   const [equipeAberta, setEquipeAberta] = useState<Equipe | null>(null)
+  const [todas, setTodas] = useState(false)
+  const [itemAberto, setItemAberto] = useState<ItemProgramacao | null>(null)
   const arquivo = useRef<HTMLInputElement>(null)
 
   const { data, loading, reload } = useData(async () => {
@@ -59,43 +75,54 @@ export default function Culto() {
     return { evento: evento as unknown as Evento & { banner_url: string | null }, equipes, lideres, liturgia: liturgia as ItemLiturgia[], repertorio: repertorio as unknown as ItemRepertorio[] }
   }, [id])
 
-  const orgRepertorio = useMemo(() => orgs.filter((o) => o.tem_repertorio), [orgs])
-
+  const louvorOrgs = useMemo(() => orgs.filter((o) => o.tem_repertorio), [orgs])
   if (loading || !data) return <Carregando />
   const { evento, equipes, liturgia, repertorio } = data
   const passado = d(evento.fim) < new Date()
   const minha = equipes.flatMap((e) => e.alocacoes.map((a) => ({ ...a, equipe: e }))).find((a) => a.pessoa_id === eu?.id)
   const lideres = minha ? data.lideres.filter((l) => l.org_id === minha.equipe.org_id && l.telefone) : []
-  const servindo = equipes.flatMap((e) => e.alocacoes).filter((a) => a.status !== 'recusada').length
+  const servindo = equipes.reduce((n, e) => n + ativos(e.alocacoes).length, 0)
   const editoLit = pastor || secretaria
   const podeEditar = secretaria || (!!evento.org_id && gerencio(evento.org_id))
   const direto = secretaria || (!!evento.org_id && supervisiono(evento.org_id)) || (!!evento.org_id && ['ensaio', 'reuniao'].includes(evento.tipo) && gerencio(evento.org_id))
   const podeBanner = pastor || secretaria || (!!evento.org_id && gerencio(evento.org_id))
-  const repertorioPorOrg = (orgId: string) => repertorio.filter((r) => r.org_id === orgId)
-  const equipeDe = (orgId: string | null) => equipes.find((e) => e.org_id === orgId)
 
-  // responsável de um item da liturgia: vem da escala (função) ou do texto
-  const responsavel = (it: ItemLiturgia) => {
-    if (it.funcao_id) {
-      const ps = equipes.flatMap((e) => e.alocacoes).filter((a) => a.funcao_id === it.funcao_id && a.status !== 'recusada')
-      if (ps.length) return ps.map((p) => primeiro(p.nome)).join(', ')
-      return it.responsavel_texto || 'A definir'
-    }
-    if (it.responsavel_texto) return it.responsavel_texto
-    if (it.org_id) return equipeDe(it.org_id)?.nome ?? orgs.find((o) => o.id === it.org_id)?.nome ?? ''
-    return ''
+  // ---- Programação: nos cultos padrão vem da escala pastoral; nos demais, da programação personalizada
+  const pastoral = equipes.find((e) => e.nome === 'Pastoral')
+  const daFuncao = (re: RegExp) => ativos(pastoral?.alocacoes ?? []).filter((a) => a.funcao && re.test(a.funcao))
+  const nomes = (al: Aloc[]) => al.map((a) => curto(a.nome)).join(', ')
+  const dow = d(evento.inicio).getDay()
+  const cultoPadrao = evento.tipo === 'culto' && dow !== 2 && !/tarde da b[eê]n[cç][aã]o/i.test(evento.titulo)
+  let programacao: ItemProgramacao[] = []
+  if (liturgia.length) {
+    programacao = liturgia.filter((it) => !louvorOrgs.some((o) => o.id === it.org_id)).map((it) => {
+      const al = it.funcao_id ? ativos(equipes.flatMap((e) => e.alocacoes)).filter((a) => a.funcao_id === it.funcao_id) : []
+      return { chave: it.id, titulo: it.titulo, quem: al.length ? nomes(al) : it.responsavel_texto ?? (it.funcao_id ? 'A definir' : ''), icone: /oferta|d[ií]zimo/i.test(it.titulo) ? Coins : /mensagem|prega|palavra/i.test(it.titulo) ? BookOpen : Flag, alocs: al, obs: it.observacao }
+    })
+  } else if (cultoPadrao) {
+    const ab = daFuncao(/abertura/i), of = daFuncao(/oferta|d[ií]zimo/i), pr = daFuncao(/prega|mensagem|palavra/i), or = daFuncao(/ora[cç][aã]o/i)
+    programacao = [
+      { chave: 'abertura', titulo: 'Abertura', quem: nomes(ab) || 'A definir', icone: Flag, alocs: ab },
+      ...(or.length ? [{ chave: 'oracao', titulo: 'Oração', quem: nomes(or), icone: Flag, alocs: or }] : []),
+      { chave: 'oferta', titulo: 'Dízimos e Ofertas', quem: nomes(of) || 'A definir', icone: Coins, alocs: of },
+      { chave: 'mensagem', titulo: 'Mensagem', quem: nomes(pr) || 'A definir', icone: BookOpen, alocs: pr },
+    ]
   }
 
-  // acompanhamento (só o que posso ver)
+  // ---- Louvor
+  const louvor = louvorOrgs.map((o) => ({ org: o, equipe: equipes.find((e) => e.org_id === o.id), hinos: repertorio.filter((r) => r.org_id === o.id) }))
+    .filter((l) => l.equipe || l.hinos.length || (gerencio(l.org.id) && !passado && evento.tipo === 'culto'))
+
+  // ---- Acompanhamento (só o que posso ver)
   const visiveis = equipes.filter((e) => e.veStatus)
   const aguardando = visiveis.flatMap((e) => e.alocacoes).filter((a) => a.status === 'pendente').length
   const recusas = visiveis.flatMap((e) => e.alocacoes).filter((a) => a.status === 'recusada')
   const completas = visiveis.filter((e) => e.alocacoes.every((a) => a.status === 'confirmada')).length
   const comEscala = new Set(equipes.map((e) => e.org_id))
   const semEscala = visaoGeral && ['culto', 'ebd', 'evento'].includes(evento.tipo)
-    ? orgs.filter((o) => ['ministerio', 'equipe'].includes(o.tipo) && !comEscala.has(o.id) || (o.tipo === 'pilar' && o.nome === 'Pastoral' && !comEscala.has(o.id)))
+    ? orgs.filter((o) => (['ministerio', 'equipe'].includes(o.tipo) || (o.tipo === 'pilar' && o.nome === 'Pastoral')) && !comEscala.has(o.id))
     : []
-  const minhasSemEscala = orgs.filter((o) => ['pilar', 'ministerio', 'equipe'].includes(o.tipo) && gerencio(o.id) && !visaoGeral && !comEscala.has(o.id) && !['Ministerial', 'Grupos Pequenos'].includes(o.nome))
+  const minhasSemEscala = visaoGeral ? [] : orgs.filter((o) => ['pilar', 'ministerio', 'equipe'].includes(o.tipo) && gerencio(o.id) && !comEscala.has(o.id) && !['Ministerial', 'Grupos Pequenos'].includes(o.nome))
 
   async function responder(confirmar: boolean) {
     const motivo = confirmar ? null : prompt('Motivo (opcional):') ?? undefined
@@ -113,254 +140,267 @@ export default function Culto() {
   }
   async function trocarBanner(f: File) {
     try {
-      const serie = !!evento.serie_id && confirm('Usar este banner também nos próximos eventos desta série?')
+      const serie = !!evento.serie_id && confirm('Usar esta imagem também nos próximos eventos desta série?')
       const n = await enviarBanner(evento.id, f, serie)
-      avisar(n > 1 ? `Banner aplicado em ${n} eventos.` : 'Banner atualizado.'); reload()
+      avisar(n > 1 ? `Imagem aplicada em ${n} eventos.` : 'Imagem atualizada.'); reload()
     } catch (e) { avisar(msgErro(e), 'erro') }
   }
 
-  // Liturgia: itens do louvor aparecem com músicas e equipe
-  const temLiturgia = liturgia.length > 0
-  const orgsComRepSemItem = [...new Set(repertorio.map((r) => r.org_id))].filter((o) => !liturgia.some((it) => it.org_id === o))
-
   return (
-    <div className="space-y-6 -mt-[max(16px,env(safe-area-inset-top))] md:mt-0">
-      {/* Topo com banner */}
-      <section className="relative -mx-4 md:mx-0 overflow-hidden rounded-b-[32px] md:rounded-[32px] text-white min-h-[300px] flex flex-col">
-        {evento.banner_url
-          ? <img src={evento.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-          : <div className="absolute inset-0 bloco-marca"><img src="/symbol.png" alt="" className="absolute -right-8 -top-4 h-64 opacity-[0.07]" /></div>}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-verde/50 to-verde" />
-        <div className="relative flex items-center justify-between px-4 pt-[max(14px,env(safe-area-inset-top))]">
-          <button onClick={() => nav(-1)} className="h-10 w-10 grid place-items-center rounded-full bg-black/25 backdrop-blur" aria-label="Voltar"><ArrowLeft className="h-5 w-5" /></button>
-          {(podeEditar || podeBanner) && !passado && (
-            <button onClick={() => setMenu(true)} className="h-10 w-10 grid place-items-center rounded-full bg-black/25 backdrop-blur" aria-label="Opções"><MoreHorizontal className="h-5 w-5" /></button>
-          )}
+    <div className="-mx-4 -mt-[max(16px,env(safe-area-inset-top))] md:mx-0 md:mt-0 bg-[#F4F4F1] min-h-screen pb-4">
+      {/* Barra superior */}
+      <header className="flex items-center justify-between px-4 pt-[max(12px,env(safe-area-inset-top))] pb-3">
+        <button onClick={() => nav(-1)} className="h-10 w-10 grid place-items-center rounded-full text-verde hover:bg-black/5" aria-label="Voltar"><ArrowLeft className="h-[22px] w-[22px]" /></button>
+        <div className="flex items-center gap-2">
+          <span className="h-7 w-7 rounded-lg bg-verde grid place-items-center"><img src="/symbol.png" alt="" className="h-4" /></span>
+          <span className="font-titulo font-extrabold text-[17px] text-verde tracking-tight">Unida <span className="text-ouro">One</span></span>
         </div>
-        <div className="relative mt-auto px-5 pb-5 pt-10">
-          <div className="flex gap-2">
-            <span className="rounded-full bg-white/15 backdrop-blur px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider">{TIPO_EVENTO_LABEL[evento.tipo]}</span>
-            {evento.cancelado && <span className="rounded-full bg-red-500/90 px-2.5 py-0.5 text-[11px] font-bold">Cancelado</span>}
-          </div>
-          <h1 className="font-titulo text-[28px] leading-[1.1] font-extrabold tracking-tight mt-2.5">{evento.titulo}</h1>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2.5 text-[13px] text-white/80">
-            <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />{(() => { const t = format(d(evento.inicio), "EEEE, d 'de' MMM", { locale: ptBR }); return t[0].toUpperCase() + t.slice(1) })()}</span>
-            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />{fmtHora(evento.inicio)}–{fmtHora(evento.fim)}</span>
-            {evento.local && <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{evento.local}</span>}
-          </div>
-          <div className="flex gap-2 mt-4 flex-wrap">
-            <Pilula><b>{equipes.length}</b> ministério{equipes.length !== 1 ? 's' : ''}</Pilula>
-            <Pilula><b>{servindo}</b> servindo</Pilula>
-            {minha && (
-              <span className="rounded-full bg-verde-claro text-verde px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5" />Você serve · {minha.equipe.nome}{minha.funcao ? ` · ${minha.funcao}` : ''}
-              </span>
-            )}
-          </div>
-          {minha?.status === 'pendente' && !passado && (
-            <div className="flex gap-2 mt-3">
-              <Botao className="h-10 flex-1 bg-white text-verde hover:bg-white/90" onClick={() => responder(true)}><Check className="h-4 w-4" />Confirmar presença</Botao>
-              <Botao className="h-10 bg-white/15 text-white hover:bg-white/20 shadow-none" onClick={() => responder(false)}><X className="h-4 w-4" />Não posso</Botao>
+        {(podeEditar || podeBanner || editoLit) && !passado
+          ? <button onClick={() => setMenu(true)} className="h-10 w-10 grid place-items-center rounded-full text-verde hover:bg-black/5" aria-label="Opções"><MoreHorizontal className="h-[22px] w-[22px]" /></button>
+          : <span className="w-10" />}
+      </header>
+
+      <div className="px-4 space-y-7">
+        {/* Destaque do evento */}
+        <section className="relative overflow-hidden rounded-[26px] text-white shadow-[0_18px_40px_-22px_rgba(11,46,38,0.9)]">
+          {evento.banner_url
+            ? <img src={evento.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            : <div className="absolute inset-0 bloco-marca"><img src="/symbol.png" alt="" className="absolute right-2 top-2 h-40 opacity-[0.06]" /></div>}
+          <div className="absolute inset-0 bg-gradient-to-r from-verde/95 via-verde/75 to-verde/30" />
+          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-verde/90 to-transparent" />
+          <div className="relative p-5">
+            <span className="inline-block rounded-md bg-white/15 border border-white/20 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.14em]">{TIPO_EVENTO_LABEL[evento.tipo]}</span>
+            {evento.cancelado && <span className="ml-2 inline-block rounded-md bg-red-500 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider">Cancelado</span>}
+            <h1 className="font-titulo text-[25px] leading-[1.15] font-extrabold tracking-tight mt-3 max-w-[90%]">{evento.titulo}</h1>
+            <div className="flex items-center gap-3 mt-3 text-[13px] text-white/85">
+              <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4 text-white/60" />{capitalizar(format(d(evento.inicio), "d 'de' MMMM", { locale: ptBR }))}</span>
+              <span className="h-3.5 w-px bg-white/25" />
+              <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-white/60" />{fmtHora(evento.inicio).replace(':', 'h')}</span>
+              {evento.local && <><span className="h-3.5 w-px bg-white/25" /><span className="flex items-center gap-1.5 truncate"><MapPin className="h-4 w-4 text-white/60" />{evento.local}</span></>}
             </div>
-          )}
-        </div>
-      </section>
-
-      {/* Programação / liturgia */}
-      {(temLiturgia || editoLit || repertorio.length > 0) && (
-        <section>
-          <Titulo acao={editoLit && !passado && <button onClick={() => setEditLit(true)} className="text-xs font-semibold text-verde-2">{temLiturgia ? 'Editar' : 'Montar'}</button>}>
-            Programação
-          </Titulo>
-          {!temLiturgia && !repertorio.length ? (
-            <Card className="p-5 text-center">
-              <p className="text-sm text-grafite/55">A programação deste culto ainda não foi montada.</p>
-              {editoLit && <Botao variante="secundario" className="mt-3 h-10" onClick={() => setEditLit(true)}>Montar programação</Botao>}
-            </Card>
-          ) : (
-            <Card className="py-1.5">
-              {liturgia.map((it, i) => {
-                const rep = it.org_id ? repertorioPorOrg(it.org_id) : []
-                const ehLouvor = !!it.org_id && (rep.length > 0 || orgRepertorio.some((o) => o.id === it.org_id))
-                return ehLouvor
-                  ? <BlocoLouvor key={it.id} n={i + 1} titulo={it.titulo} horario={it.horario} rep={rep} equipe={equipeDe(it.org_id)}
-                      podeEditar={gerencio(it.org_id!) && !passado} onEditar={() => setEditRep(it.org_id)} />
-                  : <LinhaLiturgia key={it.id} n={i + 1} titulo={it.titulo} quem={responsavel(it)} horario={it.horario} obs={it.observacao} />
-              })}
-              {orgsComRepSemItem.map((o, i) => (
-                <BlocoLouvor key={o} n={liturgia.length + i + 1} titulo="Louvor" rep={repertorioPorOrg(o)} equipe={equipeDe(o)}
-                  podeEditar={gerencio(o) && !passado} onEditar={() => setEditRep(o)} />
-              ))}
-            </Card>
-          )}
-        </section>
-      )}
-      {!temLiturgia && !repertorio.length && !editoLit && orgRepertorio.some((o) => gerencio(o.id)) && !passado && (
-        <Botao variante="secundario" className="w-full" onClick={() => setEditRep(orgRepertorio.find((o) => gerencio(o.id))!.id)}><Music2 className="h-4 w-4" />Montar repertório</Botao>
-      )}
-
-      {/* Ministérios em serviço */}
-      {equipes.length > 0 && (
-        <section>
-          <Titulo>Ministérios em serviço</Titulo>
-          <div className="flex gap-2.5 overflow-x-auto sem-barra -mx-4 px-4 pb-1">
-            {equipes.map((e) => {
-              const n = e.alocacoes.filter((a) => a.status !== 'recusada').length
-              const alerta = e.veStatus && e.alocacoes.some((a) => a.status === 'recusada')
-              return (
-                <button key={e.id} onClick={() => setEquipeAberta(e)}
-                  className="relative shrink-0 w-[92px] rounded-[20px] bg-white border border-black/[0.05] shadow-[0_8px_20px_-14px_rgba(16,24,20,0.25)] py-3.5 flex flex-col items-center gap-1.5 active:scale-[0.97] transition">
-                  <IconeMinisterio nome={e.nome} className="h-6 w-6 text-verde-2" />
-                  <span className="text-[12px] font-semibold text-verde text-center leading-tight px-1">{e.nome}</span>
-                  <span className="font-titulo text-lg font-extrabold text-verde leading-none">{n}</span>
-                  {alerta && <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />}
-                  {!e.publicada && <span className="absolute top-2 left-2 h-2 w-2 rounded-full bg-amber-400" title="Rascunho" />}
-                </button>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Acompanhamento: liderado vê só o contato do líder; gestão vê os números */}
-      {(visiveis.length > 0 || lideres.length > 0 || semEscala.length > 0 || minhasSemEscala.length > 0) && (
-        <section>
-          <Titulo>{visiveis.length || semEscala.length ? 'Acompanhamento' : 'Sua equipe'}</Titulo>
-          <Card className="divide-y divide-black/[0.05]">
-            {visiveis.length > 0 && <LinhaAcomp icone={<CheckCircle2 className="h-[18px] w-[18px] text-emerald-600" />} texto="Equipes 100% confirmadas" valor={`${completas} de ${visiveis.length}`} />}
-            {aguardando > 0 && <LinhaAcomp icone={<Hourglass className="h-[18px] w-[18px] text-amber-500" />} texto={`${aguardando} aguardando confirmação`} />}
-            {recusas.length > 0 && (
-              <LinhaAcomp icone={<AlertTriangle className="h-[18px] w-[18px] text-red-500" />} texto={`${recusas.length} não poder${recusas.length > 1 ? 'ão' : 'á'} servir`} cor="text-red-600"
-                sub={recusas.map((r) => `${primeiro(r.nome)}${r.motivo ? ` (${r.motivo})` : ''}`).join(', ')} />
+            <div className="grid grid-cols-3 gap-2 mt-5">
+              <CaixaNumero icone={Users} valor={equipes.length} rotulo={equipes.length === 1 ? 'ministério' : 'ministérios'} />
+              <CaixaNumero icone={UsersRound} valor={servindo} rotulo="servindo" />
+              {minha ? (
+                <div className="min-w-0 rounded-2xl border border-ouro/70 bg-ouro/10 backdrop-blur px-3 py-2.5">
+                  <p className="flex items-center gap-1 text-[10.5px] text-ouro-claro">
+                    {minha.status === 'confirmada' ? <Check className="h-3 w-3" strokeWidth={3} /> : <Clock className="h-3 w-3" />}
+                    {minha.status === 'confirmada' ? 'Você serve' : 'A confirmar'}
+                  </p>
+                  <p className="text-[13px] font-bold truncate leading-tight mt-0.5">{minha.equipe.nome}</p>
+                  {minha.funcao && <p className="text-[11px] text-white/65 truncate">{minha.funcao}</p>}
+                </div>
+              ) : <CaixaNumero icone={CalendarCheck} valor={programacao.length} rotulo="momentos" />}
+            </div>
+            {minha?.status === 'pendente' && !passado && (
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => responder(true)} className="flex-1 h-10 rounded-full bg-ouro text-verde text-sm font-bold flex items-center justify-center gap-1.5"><Check className="h-4 w-4" />Confirmar presença</button>
+                <button onClick={() => responder(false)} className="h-10 px-4 rounded-full bg-white/10 border border-white/20 text-sm font-semibold">Não posso</button>
+              </div>
             )}
-            {semEscala.length > 0 && <LinhaAcomp icone={<span className="h-[18px] w-[18px] grid place-items-center text-grafite/35">○</span>} texto="Sem escala neste culto" sub={semEscala.map((o) => o.nome).join(', ')} />}
-            {minhasSemEscala.map((o) => (
-              <Link key={o.id} to={`/ministerios/${o.id}/escala/${evento.id}`}><LinhaAcomp icone={<Pencil className="h-[18px] w-[18px] text-verde-2" />} texto={`Montar escala de ${o.nome}`} seta /></Link>
-            ))}
-            {lideres.map((l) => (
-              <a key={l.pessoa_id} href={linkWhats(l.telefone, `Olá, ${l.nome.split(' ')[0]}! Sobre a escala de ${evento.titulo}:`)} target="_blank" rel="noreferrer">
-                <LinhaAcomp icone={<MessageCircle className="h-[18px] w-[18px] text-emerald-600" />} texto={`Falar com ${primeiro(l.nome)}`} sub={l.papel === 'lider' ? `Líder de ${l.org_nome}` : `${l.papel[0].toUpperCase()}${l.papel.slice(1)}`} seta />
-              </a>
-            ))}
-          </Card>
-        </section>
-      )}
-
-      {cancelando && (
-        <Card className="p-4 space-y-2">
-          <p className="text-sm text-red-700">{direto ? 'Cancelar este evento? Quem está escalado será avisado.' : 'Pedir o cancelamento deste evento?'}</p>
-          <div className="flex gap-2 flex-wrap">
-            <Botao variante="perigo" className="h-9" onClick={() => cancelar(false)}>Só este</Botao>
-            {evento.serie_id && <Botao variante="perigo" className="h-9" onClick={() => cancelar(true)}>Este e os próximos</Botao>}
-            <Botao variante="fantasma" className="h-9" onClick={() => setCancelando(false)}>Voltar</Botao>
           </div>
-        </Card>
-      )}
+        </section>
+
+        {/* Programação */}
+        {programacao.length > 0 && (
+          <section>
+            <TituloSecao icone={CalendarCheck}>Programação do culto</TituloSecao>
+            <Superficie>
+              {programacao.map((it, i) => (
+                <button key={it.chave} onClick={() => setItemAberto(it)} className={clsx('w-full flex items-center gap-3.5 px-4 py-3.5 text-left', i > 0 && 'border-t border-black/[0.05]')}>
+                  <span className="h-7 w-7 shrink-0 rounded-lg bg-verde-claro/35 text-verde text-[13px] font-bold grid place-items-center">{i + 1}</span>
+                  <it.icone className="h-5 w-5 shrink-0 text-ouro" strokeWidth={1.7} />
+                  <span className="h-8 w-px bg-black/[0.07]" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-semibold text-verde leading-tight">{it.titulo}</p>
+                    <p className={clsx('text-[13px] truncate', it.quem === 'A definir' ? 'text-amber-600' : 'text-grafite/55')}>{it.quem}{it.obs ? ` · ${it.obs}` : ''}</p>
+                  </div>
+                  <ChevronRight className="h-[18px] w-[18px] text-grafite/30" />
+                </button>
+              ))}
+            </Superficie>
+          </section>
+        )}
+        {programacao.length === 0 && editoLit && !passado && (
+          <button onClick={() => setEditLit(true)} className="w-full rounded-[22px] border border-dashed border-verde/20 py-4 text-sm font-semibold text-verde-2">+ Montar programação deste evento</button>
+        )}
+
+        {/* Louvor */}
+        {louvor.map(({ org, equipe, hinos }) => (
+          <CardLouvor key={org.id} equipe={equipe} hinos={hinos} podeEditar={gerencio(org.id) && !passado}
+            onEditar={() => setEditRep(org.id)} onEquipe={() => equipe && setEquipeAberta(equipe)} />
+        ))}
+
+        {/* Ministérios em serviço */}
+        {equipes.length > 0 && (
+          <section>
+            <TituloSecao icone={Users}>Ministérios em serviço</TituloSecao>
+            <div className={clsx(equipes.length > 5 ? 'flex gap-2 overflow-x-auto sem-barra -mx-4 px-4 pb-1' : 'grid gap-2')} style={equipes.length <= 5 ? { gridTemplateColumns: `repeat(${equipes.length}, minmax(0, 1fr))` } : undefined}>
+              {equipes.map((e) => {
+                const alerta = e.veStatus && e.alocacoes.some((a) => a.status === 'recusada')
+                return (
+                  <button key={e.id} onClick={() => setEquipeAberta(e)}
+                    className="relative shrink-0 min-w-[68px] rounded-[18px] bg-white border border-black/[0.04] shadow-[0_6px_16px_-12px_rgba(16,24,20,0.3)] pt-3 pb-2.5 px-1 flex flex-col items-center active:scale-[0.97] transition">
+                    <IconeMinisterio nome={e.nome} className="h-[22px] w-[22px] text-verde" />
+                    <span className="mt-1.5 text-[10.5px] font-semibold text-verde leading-tight text-center w-full truncate">{e.nome}</span>
+                    <span className="font-titulo text-[19px] font-extrabold text-verde leading-tight">{ativos(e.alocacoes).length}</span>
+                    {alerta && <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />}
+                    {!e.publicada && <span className="absolute top-2 left-2 h-2 w-2 rounded-full bg-amber-400" />}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Acompanhamento */}
+        {(equipes.length > 0 || lideres.length > 0 || semEscala.length > 0 || minhasSemEscala.length > 0) && (
+          <section>
+            <TituloSecao icone={BarChart3}>Acompanhamento</TituloSecao>
+            <Superficie className="divide-y divide-black/[0.05]">
+              {visiveis.length > 0 && <button onClick={() => setTodas(true)} className="w-full text-left"><LinhaAcomp icone={<CheckCircle2 className="h-5 w-5 text-white fill-verde-2" />} texto="Equipes 100% confirmadas" valor={`${completas} de ${visiveis.length}`} /></button>}
+              {aguardando > 0 && <LinhaAcomp icone={<AlertCircle className="h-5 w-5 text-ouro" />} texto={`${aguardando} ${aguardando > 1 ? 'pendências' : 'pendência'}`} cor="text-[#9A7A35]" />}
+              {recusas.length > 0 && <LinhaAcomp icone={<X className="h-5 w-5 text-red-500" />} texto={`${recusas.length} não poder${recusas.length > 1 ? 'ão' : 'á'} servir`} cor="text-red-600" sub={recusas.map((r) => `${curto(r.nome)}${r.motivo ? ` (${r.motivo})` : ''}`).join(', ')} />}
+              {semEscala.length > 0 && <LinhaAcomp icone={<CircleDashed className="h-5 w-5 text-grafite/35" />} texto="Sem escala neste culto" sub={semEscala.map((o) => o.nome).join(', ')} />}
+              {minhasSemEscala.map((o) => (
+                <Link key={o.id} className="block" to={`/ministerios/${o.id}/escala/${evento.id}`}><LinhaAcomp icone={<Pencil className="h-5 w-5 text-verde-2" />} texto={`Montar escala de ${o.nome}`} seta /></Link>
+              ))}
+              {lideres.map((l) => (
+                <a key={l.pessoa_id} href={linkWhats(l.telefone, `Olá, ${l.nome.split(' ')[0]}! Sobre a escala de ${evento.titulo}:`)} target="_blank" rel="noreferrer" className="block">
+                  <LinhaAcomp icone={<MessageCircle className="h-5 w-5 text-verde" />} texto={`Falar com ${curto(l.nome)}`} seta />
+                </a>
+              ))}
+              {equipes.length > 0 && <button onClick={() => setTodas(true)} className="w-full text-left"><LinhaAcomp icone={<CalendarDays className="h-5 w-5 text-verde" />} texto="Ver escala completa" seta /></button>}
+            </Superficie>
+          </section>
+        )}
+
+        {cancelando && (
+          <Superficie className="p-4 space-y-2">
+            <p className="text-sm text-red-700">{direto ? 'Cancelar este evento? Quem está escalado será avisado.' : 'Pedir o cancelamento deste evento?'}</p>
+            <div className="flex gap-2 flex-wrap">
+              <Botao variante="perigo" className="h-9" onClick={() => cancelar(false)}>Só este</Botao>
+              {evento.serie_id && <Botao variante="perigo" className="h-9" onClick={() => cancelar(true)}>Este e os próximos</Botao>}
+              <Botao variante="fantasma" className="h-9" onClick={() => setCancelando(false)}>Voltar</Botao>
+            </div>
+          </Superficie>
+        )}
+      </div>
 
       <input ref={arquivo} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) trocarBanner(f); e.target.value = '' }} />
       <Painel aberto={menu} onFechar={() => setMenu(false)} titulo="Opções do evento">
         <div className="space-y-2 pb-2">
           {podeBanner && <Botao variante="secundario" className="w-full justify-start" onClick={() => { setMenu(false); arquivo.current?.click() }}><ImagePlus className="h-4 w-4" />Trocar imagem de fundo</Botao>}
           {podeBanner && evento.banner_url && <Botao variante="secundario" className="w-full justify-start" onClick={async () => { setMenu(false); await supabase.rpc('definir_banner', { p_evento: evento.id, p_url: '', p_serie: false }); reload() }}><X className="h-4 w-4" />Remover imagem</Botao>}
-          {editoLit && <Botao variante="secundario" className="w-full justify-start" onClick={() => { setMenu(false); setEditLit(true) }}><Pencil className="h-4 w-4" />Editar programação</Botao>}
+          {editoLit && <Botao variante="secundario" className="w-full justify-start" onClick={() => { setMenu(false); setEditLit(true) }}><ListMusic className="h-4 w-4" />{liturgia.length ? 'Editar programação personalizada' : 'Personalizar programação'}</Botao>}
           {podeEditar && <Botao variante="secundario" className="w-full justify-start" onClick={() => { setMenu(false); setEditando(true) }}><Pencil className="h-4 w-4" />{direto ? 'Editar evento' : 'Pedir alteração do evento'}</Botao>}
           {podeEditar && <Botao variante="perigo" className="w-full justify-start" onClick={() => { setMenu(false); setCancelando(true) }}><Trash2 className="h-4 w-4" />Cancelar evento</Botao>}
         </div>
       </Painel>
+      <PainelPessoas titulo={itemAberto?.titulo ?? ''} aberto={!!itemAberto} onFechar={() => setItemAberto(null)} alocs={itemAberto?.alocs ?? []} meuId={eu?.id}
+        vazio={itemAberto?.quem && itemAberto.quem !== 'A definir' ? itemAberto.quem : 'Ainda não há ninguém escalado para este momento.'} />
       <PainelEquipe equipe={equipeAberta} onFechar={() => setEquipeAberta(null)} meuId={eu?.id} gere={!!equipeAberta && gerencio(equipeAberta.org_id)} eventoId={evento.id} passado={passado} />
+      <Painel aberto={todas} onFechar={() => setTodas(false)} titulo="Escala completa">
+        <div className="space-y-5 pb-2">{equipes.map((e) => <ListaEquipe key={e.id} equipe={e} meuId={eu?.id} titulo />)}</div>
+      </Painel>
       <FormEvento aberto={editando} onFechar={() => setEditando(false)} evento={evento} onSalvo={reload} />
       <EditorLiturgia aberto={editLit} onFechar={() => setEditLit(false)} eventoId={evento.id} itens={liturgia} onMudou={reload} />
-      <EditorRepertorio orgId={editRep} onFechar={() => setEditRep(null)} eventoId={evento.id} itens={editRep ? repertorioPorOrg(editRep) : []} onMudou={reload} />
+      <EditorRepertorio orgId={editRep} onFechar={() => setEditRep(null)} eventoId={evento.id} itens={editRep ? repertorio.filter((r) => r.org_id === editRep) : []} onMudou={reload} />
     </div>
   )
 }
 
-function Pilula({ children }: { children: ReactNode }) {
-  return <span className="rounded-full bg-white/12 bg-white/[0.12] backdrop-blur px-3 py-1.5 text-xs text-white/90 [&>b]:font-bold [&>b]:text-white">{children}</span>
+function Superficie({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={clsx('rounded-[22px] bg-white border border-black/[0.04] shadow-[0_10px_30px_-20px_rgba(16,24,20,0.35)] overflow-hidden', className)}>{children}</div>
 }
 
-function Titulo({ children, acao }: { children: ReactNode; acao?: ReactNode }) {
-  return <div className="flex items-center justify-between mb-2.5 px-1"><h2 className="font-titulo font-bold text-[17px] text-verde">{children}</h2>{acao}</div>
+function TituloSecao({ icone: Icone, children }: { icone: LucideIcon; children: ReactNode }) {
+  return <h2 className="flex items-center gap-2.5 mb-3 px-1 font-titulo font-bold text-[18px] text-verde"><Icone className="h-5 w-5" strokeWidth={1.8} />{children}</h2>
 }
 
-function Numero({ n }: { n: number }) {
-  return <span className="h-7 w-7 shrink-0 rounded-full bg-verde-claro/45 text-verde text-xs font-bold grid place-items-center">{n}</span>
-}
-
-function LinhaLiturgia({ n, titulo, quem, horario, obs }: { n: number; titulo: string; quem: string; horario: string | null; obs: string | null }) {
+function CaixaNumero({ icone: Icone, valor, rotulo }: { icone: LucideIcon; valor: number; rotulo: string }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <Numero n={n} />
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-verde leading-tight">{titulo}</p>
-        {(quem || obs) && <p className="text-[13px] text-grafite/55 truncate">{[quem, obs].filter(Boolean).join(' · ')}</p>}
+    <div className="min-w-0 rounded-2xl bg-white/[0.09] border border-white/15 backdrop-blur px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <Icone className="h-[18px] w-[18px] text-white/65 shrink-0" strokeWidth={1.7} />
+        <p className="font-titulo text-[20px] font-extrabold leading-none">{valor}</p>
       </div>
-      {horario && <span className="text-xs font-semibold text-grafite/40">{horario.slice(0, 5)}</span>}
+      <p className="text-[11px] text-white/65 mt-1.5">{rotulo}</p>
     </div>
   )
 }
 
-function BlocoLouvor({ n, titulo, horario, rep, equipe, podeEditar, onEditar }: { n: number; titulo: string; horario?: string | null; rep: ItemRepertorio[]; equipe?: Equipe; podeEditar: boolean; onEditar: () => void }) {
-  const porFuncao = useMemo(() => {
-    const m = new Map<string, string[]>()
-    ;(equipe?.alocacoes ?? []).filter((a) => a.status !== 'recusada').sort((a, b) => a.funcao_ordem - b.funcao_ordem)
-      .forEach((a) => { const k = a.funcao ?? 'Equipe'; m.set(k, [...(m.get(k) ?? []), primeiro(a.nome)]) })
+function CardLouvor({ equipe, hinos, podeEditar, onEditar, onEquipe }: { equipe?: Equipe; hinos: ItemRepertorio[]; podeEditar: boolean; onEditar: () => void; onEquipe: () => void }) {
+  const instrumentos = useMemo(() => {
+    const m = new Map<string, number>()
+    ativos(equipe?.alocacoes ?? []).sort((a, b) => a.funcao_ordem - b.funcao_ordem).forEach((a) => { const k = a.funcao ?? 'Equipe'; m.set(k, (m.get(k) ?? 0) + 1) })
     return [...m.entries()]
   }, [equipe])
   return (
-    <div className="mx-2 my-1.5 rounded-[18px] bloco-marca text-white p-4">
-      <div className="flex items-center gap-3">
-        <span className="h-7 w-7 shrink-0 rounded-full bg-white/15 text-white text-xs font-bold grid place-items-center">{n}</span>
-        <p className="flex-1 font-titulo font-bold">{titulo}</p>
-        {horario && <span className="text-xs text-white/50">{horario.slice(0, 5)}</span>}
-        {podeEditar && <button onClick={onEditar} className="text-xs font-semibold text-verde-glow">{rep.length ? 'Editar' : '+ Músicas'}</button>}
-      </div>
-      {rep.length > 0 ? (
-        <ol className="mt-3 space-y-1.5">
-          {rep.map((r) => (
-            <li key={r.id} className="flex items-center gap-2.5 rounded-xl bg-white/[0.07] px-3 py-2">
-              <Music2 className="h-3.5 w-3.5 text-verde-glow shrink-0" />
-              <span className="flex-1 min-w-0 text-sm font-medium truncate">{r.musicas.titulo}{r.musicas.artista && <span className="text-white/45 font-normal"> · {r.musicas.artista}</span>}</span>
-              {(r.tom || r.musicas.tom) && <span className="text-[11px] font-bold rounded-md bg-white/10 px-1.5 py-0.5">{r.tom || r.musicas.tom}</span>}
-              {r.musicas.link && <a href={r.musicas.link} target="_blank" rel="noreferrer" className="text-white/60" aria-label="Ouvir"><ExternalLink className="h-3.5 w-3.5" /></a>}
-              {r.musicas.cifra_link && <a href={r.musicas.cifra_link} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-verde-glow">CIFRA</a>}
-            </li>
-          ))}
-        </ol>
-      ) : <p className="mt-2 text-sm text-white/50">Repertório ainda não definido.</p>}
-      {porFuncao.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-x-3 gap-y-1.5">
-          {porFuncao.map(([f, nomes]) => (
-            <p key={f} className="text-xs leading-snug"><span className="text-white/45">{f}</span><br /><span className="font-medium">{nomes.join(', ')}</span></p>
-          ))}
+    <section className="relative overflow-hidden rounded-[24px] bloco-marca text-white shadow-[0_18px_40px_-24px_rgba(11,46,38,0.9)]">
+      <Music2 className="absolute -left-6 -bottom-8 h-44 w-44 text-white/[0.04]" strokeWidth={1} />
+      <div className="relative p-5">
+        <div className="grid grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-4">
+          <div className="flex flex-col">
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-ouro">Louvor</p>
+            <p className="font-titulo text-[21px] leading-[1.1] font-extrabold mt-1.5">Repertório<br />do culto</p>
+            <button onClick={podeEditar ? onEditar : onEquipe} className="mt-auto pt-4 self-start" aria-label={podeEditar ? 'Editar hinos' : 'Ver equipe'}>
+              <span className="h-9 w-9 rounded-full border border-ouro/80 text-ouro grid place-items-center">{podeEditar ? <Pencil className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}</span>
+            </button>
+          </div>
+          <div className="border-l border-white/10 pl-4">
+            {hinos.length ? (
+              <ol>
+                {hinos.map((h, i) => (
+                  <li key={h.id} className={clsx('flex items-center gap-2.5 py-2', i > 0 && 'border-t border-white/10')}>
+                    <Music2 className="h-3.5 w-3.5 shrink-0 text-white/60" />
+                    <span className="text-[13.5px] leading-tight">{h.musicas.titulo}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : <p className="text-[13px] text-white/50 py-2">{podeEditar ? 'Toque no lápis para colocar os hinos.' : 'Hinos ainda não definidos.'}</p>}
+          </div>
         </div>
-      )}
-    </div>
+        {instrumentos.length > 0 && (
+          <button onClick={onEquipe} className="w-full mt-4 pt-4 border-t border-white/10 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(instrumentos.length, 5)}, minmax(0, 1fr))` }}>
+            {instrumentos.slice(0, 5).map(([f, n]) => {
+              const I = iconeFuncao(f)
+              return (
+                <span key={f} className="flex flex-col items-center gap-1">
+                  <span className="h-8 w-8 rounded-full bg-white/10 grid place-items-center"><I className="h-4 w-4 text-white/85" strokeWidth={1.7} /></span>
+                  <span className="text-[10.5px] text-white/70 truncate max-w-full">{f}</span>
+                  <span className="text-[13px] font-bold leading-none">{n}</span>
+                </span>
+              )
+            })}
+          </button>
+        )}
+      </div>
+    </section>
   )
 }
 
 function LinhaAcomp({ icone, texto, valor, sub, cor, seta }: { icone: ReactNode; texto: string; valor?: string; sub?: string; cor?: string; seta?: boolean }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      {icone}
+    <div className="flex items-center gap-3.5 px-4 py-3.5">
+      <span className="shrink-0">{icone}</span>
       <div className="flex-1 min-w-0">
-        <p className={clsx('text-sm font-medium', cor ?? 'text-grafite')}>{texto}</p>
+        <p className={clsx('text-[15px] font-medium', cor ?? 'text-grafite/90')}>{texto}</p>
         {sub && <p className="text-xs text-grafite/50 truncate">{sub}</p>}
       </div>
-      {valor && <span className="text-sm font-bold text-verde">{valor}</span>}
-      {seta && <span className="text-grafite/30">›</span>}
+      {valor && <span className="text-sm font-bold text-verde-2">{valor}</span>}
+      {(seta || valor) && <ChevronRight className="h-[18px] w-[18px] text-grafite/30" />}
     </div>
   )
 }
 
-function PainelEquipe({ equipe, onFechar, meuId, gere, eventoId, passado }: { equipe: Equipe | null; onFechar: () => void; meuId?: string; gere: boolean; eventoId: string; passado: boolean }) {
-  if (!equipe) return null
+function ListaEquipe({ equipe, meuId, titulo }: { equipe: Equipe; meuId?: string; titulo?: boolean }) {
   const grupos = new Map<string, Aloc[]>()
   ;[...equipe.alocacoes].sort((a, b) => a.funcao_ordem - b.funcao_ordem).forEach((a) => { const k = a.funcao ?? 'Equipe'; grupos.set(k, [...(grupos.get(k) ?? []), a]) })
   return (
-    <Painel aberto onFechar={onFechar} titulo={equipe.nome}
-      rodape={gere && !passado ? <Link to={`/ministerios/${equipe.org_id}/escala/${eventoId}`}><Botao className="w-full"><Pencil className="h-4 w-4" />Editar escala</Botao></Link> : undefined}>
-      <div className="space-y-4 pb-2">
+    <div>
+      {titulo && <p className="flex items-center gap-2 font-titulo font-bold text-verde mb-2"><IconeMinisterio nome={equipe.nome} className="h-4 w-4" />{equipe.nome}</p>}
+      <div className="space-y-3">
         {[...grupos.entries()].map(([f, lista]) => (
           <div key={f}>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-grafite/40 mb-1.5">{f}</p>
@@ -378,6 +418,36 @@ function PainelEquipe({ equipe, onFechar, meuId, gere, eventoId, passado }: { eq
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function PainelEquipe({ equipe, onFechar, meuId, gere, eventoId, passado }: { equipe: Equipe | null; onFechar: () => void; meuId?: string; gere: boolean; eventoId: string; passado: boolean }) {
+  if (!equipe) return null
+  return (
+    <Painel aberto onFechar={onFechar} titulo={equipe.nome}
+      rodape={gere && !passado ? <Link to={`/ministerios/${equipe.org_id}/escala/${eventoId}`}><Botao className="w-full"><Pencil className="h-4 w-4" />Editar escala</Botao></Link> : undefined}>
+      <div className="pb-2"><ListaEquipe equipe={equipe} meuId={meuId} /></div>
+    </Painel>
+  )
+}
+
+function PainelPessoas({ titulo, aberto, onFechar, alocs, meuId, vazio }: { titulo: string; aberto: boolean; onFechar: () => void; alocs: Aloc[]; meuId?: string; vazio: string }) {
+  return (
+    <Painel aberto={aberto} onFechar={onFechar} titulo={titulo}>
+      <div className="space-y-1.5 pb-2">
+        {alocs.length === 0 ? <p className="text-sm text-grafite/60">{vazio}</p> : alocs.map((a) => (
+          <div key={a.id} className={clsx('flex items-center gap-2.5 rounded-xl px-3 py-2.5', a.pessoa_id === meuId ? 'bg-verde-claro/30' : 'bg-white')}>
+            <Iniciais nome={a.nome} className="h-9 w-9 text-xs" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-verde truncate">{a.nome}{a.pessoa_id === meuId ? ' (você)' : ''}</p>
+              <p className="text-xs text-grafite/50">{a.funcao}</p>
+            </div>
+            {a.status && <StatusAloc status={a.status} />}
+          </div>
+        ))}
+        {alocs.some((a) => a.pessoa_id === meuId) && <p className="text-xs text-grafite/50 pt-2">Precisa trocar? Use "Pedir troca" na sua escala, na tela inicial.</p>}
       </div>
     </Painel>
   )

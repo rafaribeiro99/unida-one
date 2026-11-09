@@ -156,7 +156,7 @@ export function EditorRepertorio({ orgId, onFechar, eventoId, itens, onMudou }: 
     onMudou()
   }
   async function criar() {
-    if (!nova?.titulo.trim()) return avisar('Informe o nome da música.', 'erro')
+    if (!nova?.titulo.trim()) return avisar('Informe o nome do hino.', 'erro')
     const { data, error } = await supabase.from('musicas').insert({ unidade_id: eu!.unidade_id, titulo: nova.titulo.trim(), artista: nova.artista || null,
       tom: nova.tom || null, link: nova.link || null, cifra_link: nova.cifra_link || null }).select('id').single()
     if (error) return avisar(msgErro(error), 'erro')
@@ -171,15 +171,12 @@ export function EditorRepertorio({ orgId, onFechar, eventoId, itens, onMudou }: 
     ])
     onMudou()
   }
-  async function tom(id: string, valor: string) {
-    await supabase.from('repertorio').update({ tom: valor || null }).eq('id', id); onMudou()
-  }
   async function remover(id: string) {
     await supabase.from('repertorio').delete().eq('id', id); onMudou()
   }
 
   return (
-    <Painel aberto onFechar={onFechar} titulo="Repertório do culto">
+    <Painel aberto onFechar={onFechar} titulo="Hinos do culto">
       <div className="space-y-5 pb-2">
         {itens.length > 0 && (
           <div className="space-y-1.5">
@@ -187,8 +184,6 @@ export function EditorRepertorio({ orgId, onFechar, eventoId, itens, onMudou }: 
               <div key={r.id} className="flex items-center gap-2 rounded-xl bg-white border border-black/[0.05] px-3 py-2">
                 <span className="text-xs font-bold text-grafite/40 w-4">{i + 1}</span>
                 <p className="flex-1 min-w-0 text-sm font-semibold text-verde truncate">{r.musicas.titulo}</p>
-                <input defaultValue={r.tom ?? r.musicas.tom ?? ''} onBlur={(e) => e.target.value !== (r.tom ?? r.musicas.tom ?? '') && tom(r.id, e.target.value)}
-                  placeholder="Tom" className="w-12 h-8 rounded-lg border border-black/10 text-center text-xs font-bold" aria-label="Tom" />
                 <button onClick={() => mover(i, -1)} disabled={i === 0} className="p-1 text-grafite/40 disabled:opacity-20" aria-label="Subir"><ArrowUp className="h-4 w-4" /></button>
                 <button onClick={() => mover(i, 1)} disabled={i === itens.length - 1} className="p-1 text-grafite/40 disabled:opacity-20" aria-label="Descer"><ArrowDown className="h-4 w-4" /></button>
                 <button onClick={() => remover(r.id)} className="p-1 text-grafite/35 hover:text-red-600" aria-label="Remover"><Trash2 className="h-4 w-4" /></button>
@@ -200,26 +195,19 @@ export function EditorRepertorio({ orgId, onFechar, eventoId, itens, onMudou }: 
           <div className="space-y-2">
             <div className="relative">
               <Search className="h-4 w-4 absolute left-3 top-3.5 text-grafite/40" />
-              <Entrada className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar música já cadastrada" />
+              <Entrada className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar hino já cadastrado" />
             </div>
             {achadas.filter((m) => !jaTem.has(m.id)).map((m) => (
               <button key={m.id} onClick={() => incluir(m.id)} className="w-full flex items-center gap-2 rounded-xl bg-white border border-black/[0.05] px-3 py-2.5 text-left">
-                <span className="flex-1 text-sm">{m.titulo}{m.artista && <span className="text-grafite/45"> · {m.artista}</span>}</span>
-                {m.tom && <span className="text-xs font-bold text-grafite/50">{m.tom}</span>}
+                <span className="flex-1 text-sm">{m.titulo}</span>
                 <Plus className="h-4 w-4 text-verde-2" />
               </button>
             ))}
-            <Botao variante="secundario" className="w-full" onClick={() => setNova({ titulo: busca, artista: '', tom: '', link: '', cifra_link: '' })}><Plus className="h-4 w-4" />Cadastrar música nova</Botao>
+            <Botao variante="secundario" className="w-full" onClick={() => setNova({ titulo: busca, artista: '', tom: '', link: '', cifra_link: '' })}><Plus className="h-4 w-4" />Cadastrar hino novo</Botao>
           </div>
         ) : (
           <div className="rounded-2xl bg-white border border-black/[0.05] p-3.5 space-y-3">
-            <Entrada value={nova.titulo} onChange={(e) => setNova({ ...nova, titulo: e.target.value })} placeholder="Nome da música" />
-            <div className="grid grid-cols-[1fr_80px] gap-2">
-              <Entrada value={nova.artista} onChange={(e) => setNova({ ...nova, artista: e.target.value })} placeholder="Artista (opcional)" />
-              <Entrada value={nova.tom} onChange={(e) => setNova({ ...nova, tom: e.target.value })} placeholder="Tom" />
-            </div>
-            <Entrada value={nova.link} onChange={(e) => setNova({ ...nova, link: e.target.value })} placeholder="Link para ouvir (YouTube/Spotify)" />
-            <Entrada value={nova.cifra_link} onChange={(e) => setNova({ ...nova, cifra_link: e.target.value })} placeholder="Link da cifra (opcional)" />
+            <Entrada autoFocus value={nova.titulo} onChange={(e) => setNova({ ...nova, titulo: e.target.value })} placeholder="Nome do hino" />
             <div className="flex gap-2"><Botao variante="fantasma" onClick={() => setNova(null)}>Voltar</Botao><Botao className="flex-1" onClick={criar}>Salvar e incluir</Botao></div>
           </div>
         )}

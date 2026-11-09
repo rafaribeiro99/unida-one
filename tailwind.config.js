@@ -6,6 +6,7 @@ export default {
       colors: {
         verde: { DEFAULT: '#0B2E26', 2: '#145C46', claro: '#A8E6C1', glow: '#6EE7B7', suave: '#B7F5D3' },
         escuro: '#07110E',
+        ouro: { DEFAULT: '#C9A55C', claro: '#E8D5A8' },
         painel: '#0C1A15',
         fundo: '#F5F7F4',
         grafite: '#1F2937',
