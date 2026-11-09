@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { ChevronRight, Plus, RefreshCw, Search, UserPlus } from 'lucide-react'
-import { useAuth } from '../lib/auth'
+import { COLUNAS_PESSOA, useAuth } from '../lib/auth'
+import { carregarContatos } from '../lib/contatos'
 import { useData, q } from '../lib/useData'
 import { supabase, msgErro } from '../lib/supabase'
 import { fmtDiaHora } from '../lib/datas'
@@ -122,7 +123,11 @@ function PainelOrg({ org, onFechar, onMudou }: { org: Org | null; onFechar: () =
 function Pessoas() {
   const [busca, setBusca] = useState('')
   const [sel, setSel] = useState<Pessoa | null>(null)
-  const { data, loading, reload } = useData(async () => (await q(supabase.from('pessoas').select('*').order('nome'))) as Pessoa[], [])
+  const { data, loading, reload } = useData(async () => {
+    const ps = (await q(supabase.from('pessoas').select(COLUNAS_PESSOA).order('nome'))) as unknown as Pessoa[]
+    const cs = await carregarContatos(ps.map((p) => p.id))
+    return ps.map((p) => ({ ...p, telefone: cs.get(p.id)?.telefone ?? null, email: cs.get(p.id)?.email ?? null }))
+  }, [])
   const lista = useMemo(() => (data ?? []).filter((p) => p.nome.toLowerCase().includes(busca.toLowerCase())), [data, busca])
   const semAcesso = (data ?? []).filter((p) => !p.user_id && p.ativo).length
   return (

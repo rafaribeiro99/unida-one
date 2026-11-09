@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { AlertTriangle, ArrowLeft, Check, ChevronDown, ClipboardList, MapPin, Pencil, Trash2, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, ClipboardList, MapPin, MessageCircle, Pencil, Trash2, X } from 'lucide-react'
+import { carregarMeusLideres } from '../lib/contatos'
+import { linkWhats } from '../lib/whats'
 import { useAuth } from '../lib/auth'
 import { useData, q } from '../lib/useData'
 import { supabase, msgErro, dispararWhatsApp } from '../lib/supabase'
@@ -13,14 +15,22 @@ import { Botao, Card, Carregando, Iniciais, Selo, StatusAloc, Vazio, useAviso } 
 import { FormEvento } from '../components/Eventos'
 
 export interface Equipe {
-  id: string; org_id: string; publicada: boolean; org: { nome: string }
-  alocacoes: { id: string; pessoa_id: string; status: string; motivo: string | null; pessoas: { nome: string }; funcoes: { nome: string; ordem: number } | null }[]
+  id: string; org_id: string; publicada: boolean; org: { nome: string }; veStatus: boolean
+  /** status e motivo vêm nulos quando o usuário não pode vê-los */
+  alocacoes: { id: string; pessoa_id: string; status: string | null; motivo: string | null; pessoas: { nome: string }; funcoes: { nome: string; ordem: number } | null }[]
 }
 
-export async function carregarEquipes(eventoId: string) {
-  return (await q(supabase.from('escalas')
-    .select('id,org_id,publicada,org(nome),alocacoes(id,pessoa_id,status,motivo,pessoas!alocacoes_pessoa_id_fkey(nome),funcoes(nome,ordem))')
-    .eq('evento_id', eventoId))) as unknown as Equipe[]
+interface LinhaRpc { escala_id: string; org_id: string; org_nome: string; publicada: boolean; alocacao_id: string; pessoa_id: string; nome: string; funcao: string | null; funcao_ordem: number; status: string | null; motivo: string | null; ve_status: boolean }
+
+export async function carregarEquipes(eventoId: string): Promise<Equipe[]> {
+  const linhas = (await q(supabase.rpc('equipes_do_culto', { p_evento: eventoId }))) as LinhaRpc[]
+  const m = new Map<string, Equipe>()
+  linhas.forEach((l) => {
+    if (!m.has(l.escala_id)) m.set(l.escala_id, { id: l.escala_id, org_id: l.org_id, publicada: l.publicada, org: { nome: l.org_nome }, veStatus: l.ve_status, alocacoes: [] })
+    m.get(l.escala_id)!.alocacoes.push({ id: l.alocacao_id, pessoa_id: l.pessoa_id, status: l.status, motivo: l.motivo, pessoas: { nome: l.nome },
+      funcoes: l.funcao ? { nome: l.funcao, ordem: l.funcao_ordem } : null })
+  })
+  return [...m.values()]
 }
 
 const ESCALAVEIS = ['pilar', 'ministerio', 'equipe']
@@ -35,11 +45,12 @@ export default function Culto() {
   const [cancelando, setCancelando] = useState(false)
 
   const { data, loading, reload } = useData(async () => {
-    const [evento, equipes] = await Promise.all([
+    const [evento, equipes, lideres] = await Promise.all([
       q(supabase.from('eventos').select('*').eq('id', id).single()),
       carregarEquipes(id),
+      carregarMeusLideres(),
     ])
-    return { evento: evento as unknown as Evento, equipes }
+    return { evento: evento as unknown as Evento, equipes, lideres }
   }, [id])
 
   const ordenadas = useMemo(() => (data?.equipes ?? [])
@@ -48,9 +59,13 @@ export default function Culto() {
 
   if (loading || !data) return <Carregando />
   const { evento } = data
+  const minha0 = ordenadas.flatMap((e) => e.alocacoes.map((a) => ({ ...a, equipe: e }))).find((a) => a.pessoa_id === eu?.id)
+  const lideres = minha0 ? data.lideres.filter((l) => l.org_id === minha0.equipe.org_id && l.telefone) : []
   const minha = ordenadas.flatMap((e) => e.alocacoes.map((a) => ({ ...a, equipe: e }))).find((a) => a.pessoa_id === eu?.id)
-  const todas = ordenadas.flatMap((e) => e.alocacoes)
+  const visiveis = ordenadas.filter((e) => e.veStatus)
+  const todas = visiveis.flatMap((e) => e.alocacoes)
   const ativas = todas.filter((a) => a.status !== 'recusada')
+  const pessoasNoCulto = ordenadas.flatMap((e) => e.alocacoes).filter((a) => a.status !== 'recusada').length
   const conf = ativas.filter((a) => a.status === 'confirmada').length
   const recusas = todas.filter((a) => a.status === 'recusada').length
   const pct = ativas.length ? Math.round((conf / ativas.length) * 100) : 0
@@ -95,12 +110,12 @@ export default function Culto() {
         <p className="text-white/70 text-sm mt-1.5 first-letter:uppercase">{format(d(evento.inicio), "EEEE, d 'de' MMMM", { locale: ptBR })} · {fmtHora(evento.inicio)}–{fmtHora(evento.fim)}</p>
         {evento.local && <p className="text-white/50 text-xs mt-1 flex items-center gap-1"><MapPin className="h-3 w-3" />{evento.local}</p>}
 
-        <div className="grid grid-cols-3 gap-2 mt-5">
+        <div className={clsx('grid gap-2 mt-5', visiveis.length ? 'grid-cols-3' : 'grid-cols-2')}>
           <Numero valor={ordenadas.length} rotulo="ministérios" />
-          <Numero valor={ativas.length} rotulo="servindo" />
-          <Numero valor={ativas.length ? `${pct}%` : '–'} rotulo="confirmados" destaque />
+          <Numero valor={pessoasNoCulto} rotulo="servindo" />
+          {visiveis.length > 0 && <Numero valor={ativas.length ? `${pct}%` : '–'} rotulo={visaoGeral ? 'confirmados' : 'confirmados na sua equipe'} destaque />}
         </div>
-        {ativas.length > 0 && (
+        {visiveis.length > 0 && ativas.length > 0 && (
           <div className="h-1.5 rounded-full bg-white/10 overflow-hidden mt-3">
             <div className="h-full rounded-full bg-gradient-to-r from-verde-claro to-verde-glow" style={{ width: `${pct}%` }} />
           </div>
@@ -120,8 +135,18 @@ export default function Culto() {
               <p className="text-xs text-grafite/50">Você serve neste culto</p>
               <p className="font-titulo font-bold text-verde">{minha.equipe.org.nome}{minha.funcoes ? ` · ${minha.funcoes.nome}` : ''}</p>
             </div>
-            <StatusAloc status={minha.status} />
+            <StatusAloc status={minha.status ?? 'pendente'} />
           </div>
+          {lideres.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {lideres.map((l) => (
+                <a key={l.pessoa_id} href={linkWhats(l.telefone, `Olá, ${l.nome.split(' ')[0]}! Sobre a escala de ${evento.titulo}:`)} target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                  <MessageCircle className="h-3.5 w-3.5" />Falar com {l.nome.split(' ')[0]}{l.papel !== 'lider' ? ` (${l.papel})` : ''}
+                </a>
+              ))}
+            </div>
+          )}
           {minha.status === 'pendente' && !passado && (
             <div className="flex gap-2 mt-3">
               <Botao className="flex-1 h-10" onClick={() => responder(true)}><Check className="h-4 w-4" />Confirmar</Botao>
@@ -195,7 +220,7 @@ function LinhaEquipe({ e, aberta, onAlternar, gere, eventoId, meuId }: { e: Equi
   const ativas = e.alocacoes.filter((a) => a.status !== 'recusada')
   const conf = ativas.filter((a) => a.status === 'confirmada').length
   const rec = e.alocacoes.length - ativas.length
-  const cor = rec ? 'bg-red-500' : conf === ativas.length && ativas.length ? 'bg-emerald-500' : 'bg-amber-400'
+  const cor = !e.veStatus ? null : rec ? 'bg-red-500' : conf === ativas.length && ativas.length ? 'bg-emerald-500' : 'bg-amber-400'
   const grupos = useMemo(() => {
     const m = new Map<string, Equipe['alocacoes']>()
     ;[...e.alocacoes].sort((a, b) => (a.funcoes?.ordem ?? 99) - (b.funcoes?.ordem ?? 99)).forEach((a) => {
@@ -208,11 +233,11 @@ function LinhaEquipe({ e, aberta, onAlternar, gere, eventoId, meuId }: { e: Equi
       <button onClick={onAlternar} className="w-full flex items-center gap-3 p-3.5 text-left">
         <div className="relative h-10 w-10 shrink-0 rounded-[14px] bg-verde text-verde-claro grid place-items-center font-titulo font-extrabold">
           {e.org.nome[0]}
-          <span className={clsx('absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white', cor)} />
+          {cor && <span className={clsx('absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white', cor)} />}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-verde truncate">{e.org.nome}{!e.publicada && <span className="ml-2 align-middle"><Selo cor="amarelo">Rascunho</Selo></span>}</p>
-          <p className="text-xs text-grafite/55">{ativas.length} {ativas.length === 1 ? 'pessoa' : 'pessoas'} · {conf} confirmad{conf === 1 ? 'a' : 'as'}{rec ? ` · ${rec} não pode${rec > 1 ? 'm' : ''}` : ''}</p>
+          <p className="text-xs text-grafite/55">{ativas.length} {ativas.length === 1 ? 'pessoa' : 'pessoas'}{e.veStatus ? ` · ${conf} confirmad${conf === 1 ? 'a' : 'as'}${rec ? ` · ${rec} não pode${rec > 1 ? 'm' : ''}` : ''}` : ''}</p>
         </div>
         <ChevronDown className={clsx('h-5 w-5 text-grafite/30 transition', aberta && 'rotate-180')} />
       </button>
@@ -229,7 +254,7 @@ function LinhaEquipe({ e, aberta, onAlternar, gere, eventoId, meuId }: { e: Equi
                       <p className={clsx('text-sm font-medium truncate', a.status === 'recusada' && 'line-through text-grafite/40')}>{a.pessoas.nome}{a.pessoa_id === meuId ? ' (você)' : ''}</p>
                       {a.status === 'recusada' && a.motivo && <p className="text-[11px] text-red-500">{a.motivo}</p>}
                     </div>
-                    <StatusAloc status={a.status} />
+                    {a.status && <StatusAloc status={a.status} />}
                   </div>
                 ))}
               </div>

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { addDays } from 'date-fns'
 import { ArrowLeft, ChevronRight, Plus, Trash2, UserPlus } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import { carregarContatos } from '../lib/contatos'
 import { useData, q } from '../lib/useData'
 import { supabase, msgErro } from '../lib/supabase'
 import { fmtDiaHora } from '../lib/datas'
@@ -26,11 +27,13 @@ export default function Ministerio() {
     const [eventos, escalas, membros, funcoes] = await Promise.all([
       q(supabase.from('eventos').select('*').gte('fim', new Date().toISOString()).lte('inicio', ate).eq('cancelado', false).or(`org_id.is.null,org_id.eq.${id}`).order('inicio')),
       q(supabase.from('escalas').select('id,evento_id,publicada,alocacoes(status)').eq('org_id', id)),
-      q(supabase.from('vinculos').select('id,papel,funcao_ids,ativo,pessoas(id,nome,telefone,user_id)').eq('org_id', id).eq('ativo', true)),
+      q(supabase.from('vinculos').select('id,papel,funcao_ids,ativo,pessoas(id,nome,user_id)').eq('org_id', id).eq('ativo', true)),
       q(supabase.from('funcoes').select('*').eq('org_id', id).order('ordem').order('nome')),
     ])
     const escalaPorEvento = new Map((escalas as any[]).map((s) => [s.evento_id, s]))
-    const ms = (membros as unknown as Membro[]).sort((a, b) => a.pessoas.nome.localeCompare(b.pessoas.nome))
+    const cs = await carregarContatos((membros as any[]).map((m) => m.pessoas.id))
+    const ms = (membros as unknown as Membro[]).map((m) => ({ ...m, pessoas: { ...m.pessoas, telefone: cs.get(m.pessoas.id)?.telefone ?? null } }))
+      .sort((a, b) => a.pessoas.nome.localeCompare(b.pessoas.nome))
     return { eventos: eventos as Evento[], escalaPorEvento, membros: ms, funcoes: funcoes as Funcao[] }
   }, [id])
 
@@ -50,7 +53,7 @@ export default function Ministerio() {
 function AbaEscalas({ orgId, gere, eventos, escalaPorEvento, onMudou }: { orgId: string; gere: boolean; eventos: Evento[]; escalaPorEvento: Map<string, any>; onMudou: () => void }) {
   const nav = useNavigate()
   const [novo, setNovo] = useState(false)
-  const [so, setSo] = useState(false)
+  const [so, setSo] = useState(!gere)
   const lista = so ? eventos.filter((e) => escalaPorEvento.has(e.id)) : eventos
   return (
     <div>
@@ -72,8 +75,8 @@ function AbaEscalas({ orgId, gere, eventos, escalaPorEvento, onMudou }: { orgId:
                   <p className="text-xs text-grafite/55 mt-0.5">{fmtDiaHora(e.inicio)} · {TIPO_EVENTO_LABEL[e.tipo]}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  {!s ? <Selo>Sem escala</Selo> : !s.publicada ? <Selo cor="amarelo">Rascunho</Selo> : <Selo cor="verde">{conf}/{tot} confirmados</Selo>}
-                  {rec > 0 && <Selo cor="vermelho">{rec} não pode{rec > 1 ? 'm' : ''}</Selo>}
+                  {!s ? (gere ? <Selo>Sem escala</Selo> : null) : !s.publicada ? <Selo cor="amarelo">Rascunho</Selo> : gere ? <Selo cor="verde">{conf}/{tot} confirmados</Selo> : <Selo cor="claro">Escala publicada</Selo>}
+                  {gere && rec > 0 && <Selo cor="vermelho">{rec} não pode{rec > 1 ? 'm' : ''}</Selo>}
                 </div>
                 {gere && <ChevronRight className="h-5 w-5 text-grafite/30" />}
               </Card>

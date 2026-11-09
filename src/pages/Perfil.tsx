@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, CalendarOff, LogOut, Plus, Settings, Trash2 } from 'lucide-react'
+import { Bell, CalendarOff, LogOut, MessageCircle, Plus, Settings, Trash2 } from 'lucide-react'
 import { addDays, format } from 'date-fns'
 import { useAuth } from '../lib/auth'
 import { useData, q } from '../lib/useData'
 import { supabase, msgErro } from '../lib/supabase'
 import { fmtDataCurta, fmtDiaHora } from '../lib/datas'
 import { fmtTel } from '../lib/whats'
-import { PAPEL_LABEL, type Indisponibilidade, type Notificacao } from '../lib/types'
+import { PAPEL_LABEL, type Indisponibilidade, type Notificacao, type Papel } from '../lib/types'
+import { carregarMeusLideres } from '../lib/contatos'
+import { linkWhats } from '../lib/whats'
 import { Botao, Campo, Card, Entrada, Iniciais, Painel, Selo, useAviso } from '../components/ui'
 
 export default function Perfil() {
@@ -17,11 +19,12 @@ export default function Perfil() {
   const [nova, setNova] = useState(false)
   useEffect(() => { if (location.hash === '#folgas') setTimeout(() => document.getElementById('folgas')?.scrollIntoView({ behavior: 'smooth' }), 300) }, [])
   const { data, reload } = useData(async () => {
-    const [ind, notif] = await Promise.all([
+    const [ind, notif, lideres] = await Promise.all([
       q(supabase.from('indisponibilidades').select('*').eq('pessoa_id', eu!.id).gte('fim', new Date().toISOString()).order('inicio')),
       q(supabase.from('notificacoes').select('*').eq('pessoa_id', eu!.id).order('criado_em', { ascending: false }).limit(15)),
+      carregarMeusLideres(),
     ])
-    return { ind: ind as Indisponibilidade[], notif: notif as Notificacao[] }
+    return { ind: ind as Indisponibilidade[], notif: notif as Notificacao[], lideres }
   }, [eu?.id])
 
   async function removerInd(i: Indisponibilidade) {
@@ -50,6 +53,25 @@ export default function Perfil() {
           ))}
         </Card>
       </section>
+
+      {(data?.lideres.length ?? 0) > 0 && (
+        <section>
+          <h2 className="text-sm font-semibold text-grafite/60 mb-2">Meus líderes</h2>
+          <Card className="divide-y divide-black/[0.06]">
+            {data!.lideres.map((l) => (
+              <div key={l.org_id + l.pessoa_id} className="p-3.5 flex items-center gap-3">
+                <Iniciais nome={l.nome} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{l.nome}</p>
+                  <p className="text-xs text-grafite/50">{l.org_nome} · {PAPEL_LABEL[l.papel as Papel]}</p>
+                </div>
+                {l.telefone && <a href={linkWhats(l.telefone, `Olá, ${l.nome.split(' ')[0]}!`)} target="_blank" rel="noreferrer"
+                  className="h-9 px-3 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold inline-flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5" />WhatsApp</a>}
+              </div>
+            ))}
+          </Card>
+        </section>
+      )}
 
       <section id="folgas" className="scroll-mt-6">
         <div className="flex items-center justify-between mb-2">

@@ -3,6 +3,9 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import type { Org, Pessoa, Vinculo, Papel } from './types'
 
+/** Colunas de pessoas liberadas para leitura direta (telefone/e-mail só pela função contatos) */
+export const COLUNAS_PESSOA = 'id,unidade_id,user_id,nome,is_admin,ativo'
+
 const GESTAO: Papel[] = ['coordenador', 'supervisor', 'lider']
 const SUPERVISAO: Papel[] = ['coordenador', 'supervisor']
 const ESCALAVEIS = ['pilar', 'ministerio', 'equipe', 'curso', 'turma', 'gp']
@@ -43,8 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const carregarPerfil = useCallback(async (s: Session | null) => {
     if (!s) { setEu(null); setVinculos([]); setOrgs([]); return }
-    const { data: p } = await supabase.from('pessoas').select('*').eq('user_id', s.user.id).maybeSingle()
-    setEu(p as Pessoa | null)
+    const { data: p } = await supabase.from('pessoas').select(COLUNAS_PESSOA).eq('user_id', s.user.id).maybeSingle()
+    if (p) {
+      const { data: c } = await supabase.rpc('contatos', { p_ids: [p.id] })
+      setEu({ ...(p as Pessoa), telefone: c?.[0]?.telefone ?? null, email: c?.[0]?.email ?? null })
+    } else setEu(null)
     if (p) {
       const [{ data: v }, { data: o }] = await Promise.all([
         supabase.from('vinculos').select('*').eq('pessoa_id', p.id).eq('ativo', true),
